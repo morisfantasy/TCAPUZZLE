@@ -68,16 +68,16 @@ a{color:inherit}
 
 /* ---------- app header ---------- */
 .topbar{background:var(--royal);color:#fff;position:sticky;top:0;z-index:20}
-.topbar-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:14px;padding:12px 20px}
-.topbar .logo-sticker img{height:34px}
-.topbar .prod{font-family:var(--display);font-size:1.25rem;color:var(--sun);text-shadow:2px 2px 0 var(--navy)}
+.topbar-in{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:18px;padding:10px 20px}
+.topbar .logo-sticker img{height:52px}
+.topbar .prod{font-family:var(--display);font-size:1.65rem;color:var(--sun);text-shadow:2px 2px 0 var(--navy)}
 .topbar .spacer{flex:1}
 .user-pill{display:flex;align-items:center;gap:10px;background:var(--navy);border-radius:999px;padding:5px 6px 5px 5px}
 .avatar{width:34px;height:34px;border-radius:50%;background:var(--sun);color:var(--navy);display:grid;place-items:center;font-family:var(--display);font-size:1.1rem;border:2px solid #fff}
 .user-pill .nm{font-weight:800;font-size:.95rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .user-pill .btn{font-size:.8rem;padding:.35em .9em;box-shadow:none;border-width:2px}
 .user-pill .btn:active{transform:none}
-@media (max-width:640px){.topbar .prod{display:none}.user-pill .nm{display:none}.topbar-in{padding:10px 14px}}
+@media (max-width:640px){.topbar .prod{display:none}.topbar .logo-sticker img{height:40px}.user-pill .nm{display:none}.topbar-in{padding:8px 14px}}
 
 .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 64px}
 @media (max-width:640px){.wrap{padding:20px 14px 48px}}
@@ -201,7 +201,7 @@ a{color:inherit}
 .tile .mk svg{width:16px;height:16px}
 
 /* ---------- play ---------- */
-.play{display:grid;grid-template-columns:minmax(0,600px) minmax(280px,1fr);gap:28px;align-items:start}
+.play{display:grid;grid-template-columns:minmax(0,600px) minmax(280px,1fr);gap:28px;align-items:start;scroll-margin-top:92px}
 @media (max-width:920px){.play{grid-template-columns:1fr;gap:18px}}
 .board-col{display:flex;flex-direction:column;gap:12px}
 .board{position:relative;width:100%;aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border:3px solid var(--navy);border-radius:12px;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none;background:var(--sq-dark)}
