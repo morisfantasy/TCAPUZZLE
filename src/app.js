@@ -122,7 +122,14 @@ function render() {
     if (!Data.owns(PUZ[parts[1]].book)) { go('#/library'); return; }
     renderPlay(parts[1]);
   } else renderLibrary();
-  window.scrollTo(0, 0);
+  requestAnimationFrame(() => {
+    if (parts[0] === 'play') {
+      const play = document.querySelector('.play');
+      if (play) play.scrollIntoView({ block: 'start', behavior: 'auto' });
+    } else {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+  });
 }
 
 /* ---------- shell ---------- */
