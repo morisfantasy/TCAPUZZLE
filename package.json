@@ -1,0 +1,11 @@
+{
+  "name": "tca-tactics-trainer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Chess Academy - interactive tactics trainer (prototype)",
+  "scripts": {
+    "start": "node server.js",
+    "build": "node build.js"
+  },
+  "engines": { "node": ">=18" }
+}
