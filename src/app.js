@@ -25,8 +25,8 @@ const colorFor = n => CONFIG.colors[(n - 1) % CONFIG.colors.length];
 const totalPuzzles = b => b.ch.reduce((a, c) => a + c.p.length, 0);
 
 /* =========================================================
-   STORE — local prototype. Swap these functions for API calls
-   (auth, purchases, progress) when connecting a real backend.
+   AUTH — persistent server-backed accounts.
+   Progress/purchases remain local for now and are keyed by username.
    ========================================================= */
 const Store = (() => {
   const mem = {};
@@ -36,29 +36,41 @@ const Store = (() => {
   return { get, set, del };
 })();
 
-async function hashPw(user, pw) {
-  const txt = 'tca-tactics|' + user.toLowerCase() + '|' + pw;
-  try {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
-    return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
-  } catch (e) { let h = 0; for (const ch of txt) h = (h * 31 + ch.charCodeAt(0)) | 0; return 'x' + h; }
+async function authRequest(path, body) {
+  const r = await fetch(path, {
+    method: body ? 'POST' : 'GET',
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: 'same-origin',
+    cache: 'no-store'
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+  return data;
 }
 const Auth = {
-  users() { return Store.get('tca.users') || {}; },
-  current() { const u = Store.get('tca.session'); return u && this.users()[u] ? this.users()[u] : null; },
+  _user: null,
+  current() { return this._user; },
+  async restore() {
+    try { this._user = (await authRequest('/api/me')).user; }
+    catch { this._user = null; }
+  },
   async register(name, username, pw) {
-    const users = this.users(), key = username.toLowerCase();
-    if (users[key]) throw new Error('That username is taken. Try another one.');
-    users[key] = { name, username, key, pass: await hashPw(key, pw), created: Date.now() };
-    Store.set('tca.users', users); Store.set('tca.session', key);
-    Store.set('tca.u.' + key, { owned: [], progress: {}, last: {} });
+    const data = await authRequest('/api/register', { name, username, password: pw });
+    this._user = data.user;
+    const key = this._user.key;
+    if (!Store.get('tca.u.' + key)) Store.set('tca.u.' + key, { owned: [], progress: {}, last: {} });
   },
   async login(username, pw) {
-    const key = username.toLowerCase(), u = this.users()[key];
-    if (!u || u.pass !== await hashPw(key, pw)) throw new Error('Username or password is not right. Check them and try again.');
-    Store.set('tca.session', key);
+    const data = await authRequest('/api/login', { username, password: pw });
+    this._user = data.user;
+    const key = this._user.key;
+    if (!Store.get('tca.u.' + key)) Store.set('tca.u.' + key, { owned: [], progress: {}, last: {} });
   },
-  logout() { Store.del('tca.session'); }
+  logout() {
+    this._user = null;
+    fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+  }
 };
 const Data = {
   get() { const u = Auth.current(); return u ? (Store.get('tca.u.' + u.key) || { owned: [], progress: {}, last: {} }) : null; },
@@ -633,5 +645,5 @@ function confetti() {
 }
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); }
 
-render();
+Auth.restore().finally(render);
 })();
