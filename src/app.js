@@ -15,6 +15,196 @@ const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const app = document.getElementById('app');
 
+/* ---------- language / i18n ---------- */
+const LANGS = {
+  en: 'English',
+  zh: '中文（普通话）',
+  yue: '廣東話',
+  es: 'Español',
+  fr: 'Français'
+};
+let currentLang = (() => { try { return localStorage.getItem('tca.lang') || 'en'; } catch { return 'en'; } })();
+
+const I18N = {
+  zh: {
+    'Tactics Trainer':'战术训练器','Log out':'退出登录','Log in':'登录','Sign up':'注册','Welcome back!':'欢迎回来！',
+    'Log in to continue your training.':'登录后继续训练。','Username':'用户名','Password':'密码','New here?':'第一次来？',
+    'Create an account':'创建账户','Create your account':'创建账户','It takes less than a minute.':'不到一分钟即可完成。',
+    'Your first name':'名字','Letters, numbers, dots or dashes. At least 3 characters.':'可使用字母、数字、点或短横线，至少 3 个字符。',
+    'At least 6 characters.':'至少 6 个字符。','Already have an account?':'已经有账户？',
+    'Solve every puzzle from The Chess Academy workbooks on an interactive board. Your progress is saved book by book.':'在互动棋盘上完成 The Chess Academy 练习册中的题目，并按书保存进度。',
+    'Your move!':'轮到你了！','Choose how you want to train':'选择你的训练方式','Books and video courses live in one place.':'练习册和视频课程都集中在这里。',
+    'Tactics Books':'战术练习册','Interactive puzzles':'互动题目','Open the workbook trainer and solve puzzles on the board.':'打开练习册训练器，在棋盘上完成题目。',
+    'Open books':'打开练习册','Video Courses':'视频课程','Lessons & series':'课程与系列','Structured video learning from The Chess Academy coaches.':'由 The Chess Academy 教练提供的系统视频课程。',
+    'Coming soon':'即将推出','Courses':'课程','Video courses are coming soon':'视频课程即将推出','This section is ready. Courses will appear here as soon as they are published.':'此区域已准备好，课程发布后会显示在这里。',
+    'Back to home':'返回主页','My books':'我的练习册','More books':'更多练习册','Books':'练习册','Unlock':'解锁','Continue':'继续',
+    'Start book':'开始练习','Start chapter':'开始章节','Solved':'已完成','First try':'首次成功','To fix':'待订正','Not started':'未开始',
+    'Chapter complete':'章节完成','Previous':'上一个','Next puzzle':'下一题','Chapter overview':'章节总览','Flip board':'翻转棋盘',
+    'Your moves':'你的走法','This chapter':'本章节','White to move':'白方走','Black to move':'黑方走','Make your move on the board.':'请在棋盘上走棋。',
+    'Hint':'提示','Show solution':'查看答案','Try again':'再试一次','Skip for now':'暂时跳过','Finish chapter':'完成章节',
+    'Try it yourself':'自己试试','Good move!':'好棋！','Now see how your opponent answers.':'看看对手如何应对。','Keep going!':'继续！',
+    'Not this time.':'这次不对。','Puzzle to fix':'待订正题目','You missed this one before. Take your time.':'之前这题做错了，慢慢想。',
+    'Already solved':'已完成','Play it again to practise.':'再做一次巩固。','Watch the solution':'观看答案','That is the solution.':'这就是答案。',
+    'Solved!':'完成！','Solved on the first try!':'一次完成！','Mistake fixed. Well done!':'订正成功，做得好！','Chapter complete!':'章节完成！',
+    'Find checkmate in one move.':'找到一步将杀。','You are in check. Capture the piece that gives check.':'你正在被将军，吃掉将军你的棋子。',
+    'Find the exchange that leaves you ahead.':'找到能让你获利的交换。','Find the capture that wins material.':'找到赢得子力的吃子。',
+    'Find the moves that let you promote or win material.':'找到能升变或赢得子力的走法。','Find the best move and win material.':'找到最佳走法并赢得子力。',
+    'Enter your first name.':'请输入名字。','Enter your username and password.':'请输入用户名和密码。','Your password needs at least 6 characters.':'密码至少需要 6 个字符。',
+    'That username is taken. Try another one.':'该用户名已被使用，请换一个。','Username or password is not right. Check them and try again.':'用户名或密码不正确，请检查后重试。',
+    'Something went wrong. Please try again.':'出现问题，请重试。','In preparation':'准备中','Our coaches are writing this book. It will appear here when it is ready.':'我们的教练正在制作这本练习册，完成后会显示在这里。',
+    'Pick a book and keep training.':'选择一本练习册继续训练。','Unlock your first book to start solving puzzles.':'解锁第一本练习册并开始做题。'
+  },
+  yue: {
+    'Tactics Trainer':'戰術訓練器','Log out':'登出','Log in':'登入','Sign up':'註冊','Welcome back!':'歡迎返嚟！',
+    'Log in to continue your training.':'登入之後繼續訓練。','Username':'用戶名','Password':'密碼','New here?':'第一次嚟？',
+    'Create an account':'建立帳戶','Create your account':'建立帳戶','It takes less than a minute.':'唔使一分鐘就搞掂。',
+    'Your first name':'名字','Letters, numbers, dots or dashes. At least 3 characters.':'可以用英文字母、數字、點或橫線，最少 3 個字元。',
+    'At least 6 characters.':'最少 6 個字元。','Already have an account?':'已經有帳戶？',
+    'Solve every puzzle from The Chess Academy workbooks on an interactive board. Your progress is saved book by book.':'喺互動棋盤完成 The Chess Academy 練習冊題目，進度會逐本保存。',
+    'Your move!':'到你行！','Choose how you want to train':'揀你想點樣訓練','Books and video courses live in one place.':'練習冊同影片課程都喺同一個地方。',
+    'Tactics Books':'戰術練習冊','Interactive puzzles':'互動題目','Open the workbook trainer and solve puzzles on the board.':'打開練習冊訓練器，喺棋盤解題。',
+    'Open books':'打開練習冊','Video Courses':'影片課程','Lessons & series':'課堂同系列','Structured video learning from The Chess Academy coaches.':'由 The Chess Academy 教練提供有系統嘅影片課程。',
+    'Coming soon':'即將推出','Courses':'課程','Video courses are coming soon':'影片課程即將推出','This section is ready. Courses will appear here as soon as they are published.':'呢個區域已經準備好，課程一推出就會顯示喺度。',
+    'Back to home':'返主頁','My books':'我嘅練習冊','More books':'更多練習冊','Books':'練習冊','Unlock':'解鎖','Continue':'繼續',
+    'Start book':'開始練習','Start chapter':'開始章節','Solved':'已完成','First try':'第一次成功','To fix':'要改正','Not started':'未開始',
+    'Chapter complete':'章節完成','Previous':'上一題','Next puzzle':'下一題','Chapter overview':'章節總覽','Flip board':'反轉棋盤',
+    'Your moves':'你嘅走法','This chapter':'呢個章節','White to move':'白方行','Black to move':'黑方行','Make your move on the board.':'喺棋盤行一步。',
+    'Hint':'提示','Show solution':'睇答案','Try again':'再試','Skip for now':'暫時跳過','Finish chapter':'完成章節',
+    'Try it yourself':'自己試','Good move!':'好棋！','Now see how your opponent answers.':'睇下對手點應。','Keep going!':'繼續！',
+    'Not this time.':'今次唔啱。','Puzzle to fix':'要改正嘅題目','You missed this one before. Take your time.':'之前呢題做錯咗，慢慢諗。',
+    'Already solved':'已完成','Play it again to practise.':'再做一次練習。','Watch the solution':'睇答案','That is the solution.':'呢個就係答案。',
+    'Solved!':'完成！','Solved on the first try!':'一次完成！','Mistake fixed. Well done!':'改正成功，做得好！','Chapter complete!':'章節完成！',
+    'Find checkmate in one move.':'搵一步將死。','You are in check. Capture the piece that gives check.':'你被將軍，食咗將軍你嗰隻棋。',
+    'Find the exchange that leaves you ahead.':'搵一個令你着數嘅交換。','Find the capture that wins material.':'搵可以贏子嘅食法。',
+    'Find the moves that let you promote or win material.':'搵可以升變或者贏子嘅走法。','Find the best move and win material.':'搵最佳走法並贏子。',
+    'Enter your first name.':'請輸入名字。','Enter your username and password.':'請輸入用戶名同密碼。','Your password needs at least 6 characters.':'密碼最少要 6 個字元。',
+    'That username is taken. Try another one.':'呢個用戶名已經有人用，試第二個。','Username or password is not right. Check them and try again.':'用戶名或者密碼唔啱，請再檢查。',
+    'Something went wrong. Please try again.':'出咗問題，請再試。','In preparation':'準備中','Our coaches are writing this book. It will appear here when it is ready.':'我哋教練正喺度整呢本練習冊，完成後就會顯示。',
+    'Pick a book and keep training.':'揀一本練習冊繼續訓練。','Unlock your first book to start solving puzzles.':'解鎖第一本練習冊開始做題。'
+  },
+  es: {
+    'Tactics Trainer':'Entrenador de táctica','Log out':'Cerrar sesión','Log in':'Iniciar sesión','Sign up':'Registrarse','Welcome back!':'¡Bienvenido de nuevo!',
+    'Log in to continue your training.':'Inicia sesión para continuar entrenando.','Username':'Usuario','Password':'Contraseña','New here?':'¿Eres nuevo?',
+    'Create an account':'Crear una cuenta','Create your account':'Crea tu cuenta','It takes less than a minute.':'Tardarás menos de un minuto.',
+    'Your first name':'Tu nombre','Letters, numbers, dots or dashes. At least 3 characters.':'Letras, números, puntos o guiones. Mínimo 3 caracteres.',
+    'At least 6 characters.':'Mínimo 6 caracteres.','Already have an account?':'¿Ya tienes una cuenta?',
+    'Solve every puzzle from The Chess Academy workbooks on an interactive board. Your progress is saved book by book.':'Resuelve los ejercicios de The Chess Academy en un tablero interactivo. Tu progreso se guarda libro a libro.',
+    'Your move!':'¡Tu turno!','Choose how you want to train':'Elige cómo quieres entrenar','Books and video courses live in one place.':'Libros y cursos en vídeo, todo en un mismo sitio.',
+    'Tactics Books':'Libros de táctica','Interactive puzzles':'Ejercicios interactivos','Open the workbook trainer and solve puzzles on the board.':'Abre el entrenador de los libros y resuelve los ejercicios en el tablero.',
+    'Open books':'Abrir libros','Video Courses':'Cursos en vídeo','Lessons & series':'Clases y series','Structured video learning from The Chess Academy coaches.':'Aprendizaje en vídeo estructurado por los entrenadores de The Chess Academy.',
+    'Coming soon':'Próximamente','Courses':'Cursos','Video courses are coming soon':'Los cursos en vídeo llegarán pronto','This section is ready. Courses will appear here as soon as they are published.':'Esta sección ya está preparada. Los cursos aparecerán aquí cuando se publiquen.',
+    'Back to home':'Volver al inicio','My books':'Mis libros','More books':'Más libros','Books':'Libros','Unlock':'Desbloquear','Continue':'Continuar',
+    'Start book':'Empezar libro','Start chapter':'Empezar capítulo','Solved':'Resuelto','First try':'A la primera','To fix':'Por corregir','Not started':'Sin empezar',
+    'Chapter complete':'Capítulo completado','Previous':'Anterior','Next puzzle':'Siguiente ejercicio','Chapter overview':'Resumen del capítulo','Flip board':'Girar tablero',
+    'Your moves':'Tus jugadas','This chapter':'Este capítulo','White to move':'Juegan blancas','Black to move':'Juegan negras','Make your move on the board.':'Haz tu jugada en el tablero.',
+    'Hint':'Pista','Show solution':'Mostrar solución','Try again':'Intentar de nuevo','Skip for now':'Saltar por ahora','Finish chapter':'Terminar capítulo',
+    'Try it yourself':'Inténtalo tú','Good move!':'¡Buena jugada!','Now see how your opponent answers.':'Ahora mira cómo responde tu rival.','Keep going!':'¡Sigue!',
+    'Not this time.':'Esta vez no.','Puzzle to fix':'Ejercicio por corregir','You missed this one before. Take your time.':'Fallaste este ejercicio antes. Tómate tu tiempo.',
+    'Already solved':'Ya resuelto','Play it again to practise.':'Repítelo para practicar.','Watch the solution':'Mira la solución','That is the solution.':'Esa es la solución.',
+    'Solved!':'¡Resuelto!','Solved on the first try!':'¡Resuelto a la primera!','Mistake fixed. Well done!':'Error corregido. ¡Bien hecho!','Chapter complete!':'¡Capítulo completado!',
+    'Find checkmate in one move.':'Encuentra mate en una jugada.','You are in check. Capture the piece that gives check.':'Estás en jaque. Captura la pieza que da jaque.',
+    'Find the exchange that leaves you ahead.':'Encuentra el cambio que te deja con ventaja.','Find the capture that wins material.':'Encuentra la captura que gana material.',
+    'Find the moves that let you promote or win material.':'Encuentra las jugadas que permiten promocionar o ganar material.','Find the best move and win material.':'Encuentra la mejor jugada y gana material.',
+    'Enter your first name.':'Introduce tu nombre.','Enter your username and password.':'Introduce tu usuario y contraseña.','Your password needs at least 6 characters.':'La contraseña debe tener al menos 6 caracteres.',
+    'That username is taken. Try another one.':'Ese usuario ya está ocupado. Prueba otro.','Username or password is not right. Check them and try again.':'El usuario o la contraseña no son correctos. Revísalos e inténtalo de nuevo.',
+    'Something went wrong. Please try again.':'Algo ha salido mal. Inténtalo de nuevo.','In preparation':'En preparación','Our coaches are writing this book. It will appear here when it is ready.':'Nuestros entrenadores están preparando este libro. Aparecerá aquí cuando esté listo.',
+    'Pick a book and keep training.':'Elige un libro y sigue entrenando.','Unlock your first book to start solving puzzles.':'Desbloquea tu primer libro para empezar a resolver ejercicios.'
+  },
+  fr: {
+    'Tactics Trainer':'Entraîneur tactique','Log out':'Se déconnecter','Log in':'Se connecter','Sign up':'Créer un compte','Welcome back!':'Bon retour !',
+    'Log in to continue your training.':'Connectez-vous pour continuer votre entraînement.','Username':'Nom d’utilisateur','Password':'Mot de passe','New here?':'Nouveau ici ?',
+    'Create an account':'Créer un compte','Create your account':'Créez votre compte','It takes less than a minute.':'Cela prend moins d’une minute.',
+    'Your first name':'Votre prénom','Letters, numbers, dots or dashes. At least 3 characters.':'Lettres, chiffres, points ou tirets. Au moins 3 caractères.',
+    'At least 6 characters.':'Au moins 6 caractères.','Already have an account?':'Vous avez déjà un compte ?',
+    'Solve every puzzle from The Chess Academy workbooks on an interactive board. Your progress is saved book by book.':'Résolvez les exercices des cahiers The Chess Academy sur un échiquier interactif. Votre progression est enregistrée livre par livre.',
+    'Your move!':'À vous de jouer !','Choose how you want to train':'Choisissez votre façon de vous entraîner','Books and video courses live in one place.':'Livres et cours vidéo réunis au même endroit.',
+    'Tactics Books':'Livres de tactique','Interactive puzzles':'Exercices interactifs','Open the workbook trainer and solve puzzles on the board.':'Ouvrez l’entraîneur des livres et résolvez les exercices sur l’échiquier.',
+    'Open books':'Ouvrir les livres','Video Courses':'Cours vidéo','Lessons & series':'Leçons et séries','Structured video learning from The Chess Academy coaches.':'Un apprentissage vidéo structuré par les entraîneurs de The Chess Academy.',
+    'Coming soon':'Bientôt disponible','Courses':'Cours','Video courses are coming soon':'Les cours vidéo arrivent bientôt','This section is ready. Courses will appear here as soon as they are published.':'Cette section est prête. Les cours apparaîtront ici dès leur publication.',
+    'Back to home':'Retour à l’accueil','My books':'Mes livres','More books':'Plus de livres','Books':'Livres','Unlock':'Débloquer','Continue':'Continuer',
+    'Start book':'Commencer le livre','Start chapter':'Commencer le chapitre','Solved':'Résolu','First try':'Du premier coup','To fix':'À corriger','Not started':'Pas commencé',
+    'Chapter complete':'Chapitre terminé','Previous':'Précédent','Next puzzle':'Exercice suivant','Chapter overview':'Vue du chapitre','Flip board':'Retourner l’échiquier',
+    'Your moves':'Vos coups','This chapter':'Ce chapitre','White to move':'Aux blancs','Black to move':'Aux noirs','Make your move on the board.':'Jouez votre coup sur l’échiquier.',
+    'Hint':'Indice','Show solution':'Voir la solution','Try again':'Réessayer','Skip for now':'Passer pour l’instant','Finish chapter':'Terminer le chapitre',
+    'Try it yourself':'Essayez vous-même','Good move!':'Bon coup !','Now see how your opponent answers.':'Voyez maintenant la réponse de votre adversaire.','Keep going!':'Continuez !',
+    'Not this time.':'Pas cette fois.','Puzzle to fix':'Exercice à corriger','You missed this one before. Take your time.':'Vous aviez raté cet exercice. Prenez votre temps.',
+    'Already solved':'Déjà résolu','Play it again to practise.':'Rejouez-le pour vous entraîner.','Watch the solution':'Voir la solution','That is the solution.':'Voici la solution.',
+    'Solved!':'Résolu !','Solved on the first try!':'Résolu du premier coup !','Mistake fixed. Well done!':'Erreur corrigée. Bravo !','Chapter complete!':'Chapitre terminé !',
+    'Find checkmate in one move.':'Trouvez le mat en un coup.','You are in check. Capture the piece that gives check.':'Vous êtes en échec. Capturez la pièce qui donne échec.',
+    'Find the exchange that leaves you ahead.':'Trouvez l’échange qui vous donne l’avantage.','Find the capture that wins material.':'Trouvez la prise qui gagne du matériel.',
+    'Find the moves that let you promote or win material.':'Trouvez les coups qui permettent de promouvoir ou de gagner du matériel.','Find the best move and win material.':'Trouvez le meilleur coup et gagnez du matériel.',
+    'Enter your first name.':'Entrez votre prénom.','Enter your username and password.':'Entrez votre nom d’utilisateur et votre mot de passe.','Your password needs at least 6 characters.':'Le mot de passe doit contenir au moins 6 caractères.',
+    'That username is taken. Try another one.':'Ce nom d’utilisateur est déjà pris. Essayez-en un autre.','Username or password is not right. Check them and try again.':'Le nom d’utilisateur ou le mot de passe est incorrect. Vérifiez et réessayez.',
+    'Something went wrong. Please try again.':'Un problème est survenu. Réessayez.','In preparation':'En préparation','Our coaches are writing this book. It will appear here when it is ready.':'Nos entraîneurs préparent ce livre. Il apparaîtra ici lorsqu’il sera prêt.',
+    'Pick a book and keep training.':'Choisissez un livre et continuez à vous entraîner.','Unlock your first book to start solving puzzles.':'Débloquez votre premier livre pour commencer les exercices.'
+  }
+};
+
+function translatedExact(s) {
+  if (currentLang === 'en') return s;
+  return (I18N[currentLang] && I18N[currentLang][s]) || s;
+}
+function translateText(s) {
+  const lead = s.match(/^\s*/)[0], tail = s.match(/\s*$/)[0], core = s.trim();
+  if (!core || currentLang === 'en') return s;
+  const exact = translatedExact(core);
+  if (exact !== core) return lead + exact + tail;
+  const dyn = {
+    zh: {
+      hi:n=>`你好，${n}！`, book:n=>`练习册 ${n}`, chapter:n=>`章节 ${n}`, puzzles:n=>`${n} 道题`, chapters:n=>`${n} 个章节`,
+      solved:n=>`${n} 已完成`, fix:n=>`${n} 待订正`, todo:n=>`${n} 待完成`, correct:n=>`${n}% 正确`,
+      count:(a,b)=>`第 ${a} 题，共 ${b} 题`, force:n=>`在 ${n} 步内强制将杀。`, fixm:n=>`订正错误（${n}）`
+    },
+    yue: {
+      hi:n=>`你好，${n}！`, book:n=>`練習冊 ${n}`, chapter:n=>`章節 ${n}`, puzzles:n=>`${n} 題`, chapters:n=>`${n} 個章節`,
+      solved:n=>`${n} 已完成`, fix:n=>`${n} 要改正`, todo:n=>`${n} 未做`, correct:n=>`${n}% 正確`,
+      count:(a,b)=>`第 ${a} 題，共 ${b} 題`, force:n=>`喺 ${n} 步內強制將死。`, fixm:n=>`改正錯誤（${n}）`
+    },
+    es: {
+      hi:n=>`¡Hola, ${n}!`, book:n=>`Libro ${n}`, chapter:n=>`Capítulo ${n}`, puzzles:n=>`${n} ejercicios`, chapters:n=>`${n} capítulos`,
+      solved:n=>`${n} resueltos`, fix:n=>`${n} por corregir`, todo:n=>`${n} por hacer`, correct:n=>`${n}% correctos`,
+      count:(a,b)=>`Ejercicio ${a} de ${b}`, force:n=>`Fuerza mate en ${n} jugadas.`, fixm:n=>`Corregir errores (${n})`
+    },
+    fr: {
+      hi:n=>`Bonjour, ${n} !`, book:n=>`Livre ${n}`, chapter:n=>`Chapitre ${n}`, puzzles:n=>`${n} exercices`, chapters:n=>`${n} chapitres`,
+      solved:n=>`${n} résolus`, fix:n=>`${n} à corriger`, todo:n=>`${n} à faire`, correct:n=>`${n}% correct`,
+      count:(a,b)=>`Exercice ${a} sur ${b}`, force:n=>`Forcez le mat en ${n} coups.`, fixm:n=>`Corriger les erreurs (${n})`
+    }
+  }[currentLang];
+  if (!dyn) return s;
+  let m;
+  if ((m=core.match(/^Hi, (.+)!$/))) return lead+dyn.hi(m[1])+tail;
+  if ((m=core.match(/^Book (\d+)$/))) return lead+dyn.book(m[1])+tail;
+  if ((m=core.match(/^Chapter (\d+)$/))) return lead+dyn.chapter(m[1])+tail;
+  if ((m=core.match(/^(\d+) puzzles$/))) return lead+dyn.puzzles(m[1])+tail;
+  if ((m=core.match(/^(\d+) chapters$/))) return lead+dyn.chapters(m[1])+tail;
+  if ((m=core.match(/^(\d+) solved$/))) return lead+dyn.solved(m[1])+tail;
+  if ((m=core.match(/^(\d+) to fix$/))) return lead+dyn.fix(m[1])+tail;
+  if ((m=core.match(/^(\d+) to do$/))) return lead+dyn.todo(m[1])+tail;
+  if ((m=core.match(/^(\d+)% correct$/))) return lead+dyn.correct(m[1])+tail;
+  if ((m=core.match(/^Puzzle (\d+) of (\d+)$/))) return lead+dyn.count(m[1],m[2])+tail;
+  if ((m=core.match(/^Force checkmate in (\d+) moves\.$/))) return lead+dyn.force(m[1])+tail;
+  if ((m=core.match(/^Fix mistakes \((\d+)\)$/))) return lead+dyn.fixm(m[1])+tail;
+  return s;
+}
+function applyTranslations(root=document) {
+  if (currentLang === 'en') return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes=[]; while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(n => { const x=translateText(n.nodeValue); if (x!==n.nodeValue) n.nodeValue=x; });
+}
+function languageSelect(id='langSel') {
+  return `<select class="lang-select" id="${id}" aria-label="Language">${Object.entries(LANGS).map(([k,v])=>`<option value="${k}"${k===currentLang?' selected':''}>${v}</option>`).join('')}</select>`;
+}
+function bindLanguage() {
+  document.querySelectorAll('.lang-select').forEach(s => s.onchange = () => {
+    currentLang = s.value;
+    try { localStorage.setItem('tca.lang', currentLang); } catch {}
+    render();
+  });
+  applyTranslations(app);
+}
+
 /* ---------- puzzle index ---------- */
 const PUZ = {};
 BOOKS.forEach(b => b.ch.forEach((c, ci) => c.p.forEach((p, pi) => {
@@ -126,15 +316,19 @@ function render() {
   const user = Auth.current();
   const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   if (!user) { renderAuth(parts[0] === 'signup' ? 'signup' : 'login'); return; }
-  if (parts[0] === 'book' && bookByN(parts[1])) {
+  if (parts[0] === 'home' || !parts[0]) renderHome();
+  else if (parts[0] === 'courses') renderCourses();
+  else if (parts[0] === 'library') renderLibrary();
+  else if (parts[0] === 'book' && bookByN(parts[1])) {
     if (!Data.owns(parts[1])) { go('#/library'); return; }
     if (parts[2] === 'ch' && bookByN(parts[1]).ch[+parts[3]]) renderChapter(+parts[1], +parts[3]);
     else renderBook(+parts[1]);
   } else if (parts[0] === 'play' && PUZ[parts[1]]) {
     if (!Data.owns(PUZ[parts[1]].book)) { go('#/library'); return; }
     renderPlay(parts[1]);
-  } else renderLibrary();
+  } else renderHome();
   requestAnimationFrame(() => {
+    applyTranslations(app);
     if (parts[0] === 'play') {
       const play = document.querySelector('.play');
       if (play) play.scrollIntoView({ block: 'start', behavior: 'auto' });
@@ -148,15 +342,16 @@ function render() {
 function shell(inner) {
   const u = Auth.current();
   return `<header class="topbar"><div class="topbar-in">
-    <a href="#/library" class="logo-sticker" aria-label="The Chess Academy, go to my books"><img src="${LOGO}" alt="The Chess Academy"></a>
+    <a href="#/home" class="logo-sticker" aria-label="The Chess Academy"><img src="${LOGO}" alt="The Chess Academy"></a>
     <span class="prod">Tactics Trainer</span><span class="spacer"></span>
+    ${languageSelect()}
     <div class="user-pill"><span class="avatar" aria-hidden="true">${esc(u.name.trim()[0] || '?').toUpperCase()}</span>
       <span class="nm">${esc(u.name)}</span>
       <button class="btn white" id="logout">Log out</button></div>
   </div></header><div class="checker" aria-hidden="true"></div>
   <main class="wrap">${inner}</main>`;
 }
-function bindShell() { const b = $('#logout'); if (b) b.onclick = () => { Auth.logout(); go('#/login'); }; }
+function bindShell() { bindLanguage(); const b = $('#logout'); if (b) b.onclick = () => { Auth.logout(); go('#/login'); }; }
 
 /* ---------- static board ---------- */
 function staticBoard(fen, orient = 'w') {
@@ -175,6 +370,7 @@ function renderAuth(mode) {
   const demoCh = BOOKS[0].ch.find(c => /Mate in One: Queen/.test(c.t)) || BOOKS[0].ch[0];
   const demo = PUZ[demoCh.p[2][0]];
   app.innerHTML = `<div class="auth">
+    <div class="auth-lang">${languageSelect('langSelAuth')}</div>
     <section class="auth-hero">
       <span class="logo-sticker"><img src="${LOGO}" alt="The Chess Academy"></span>
       <h1>Tactics<span>Trainer</span></h1>
@@ -226,10 +422,52 @@ function renderAuth(mode) {
         if (!u || !p) return showErr('Enter your username and password.');
         await Auth.login(u, p);
       }
-      go('#/library');
+      go('#/home');
     } catch (err) { showErr(err.message); }
   };
+  bindLanguage();
   setTimeout(() => { const f = $(mode === 'signup' ? '#n' : '#u'); f && f.focus(); }, 50);
+}
+
+/* =========================================================
+   HOME / COURSES HUB
+   ========================================================= */
+function renderHome() {
+  const u = Auth.current();
+  app.innerHTML = shell(`
+    <section class="hub-head">
+      <h1>Choose how you want to train</h1>
+      <p>Books and video courses live in one place.</p>
+    </section>
+    <div class="hub-grid">
+      <a class="card hub-card books" href="#/library">
+        <span class="eyebrow">Interactive puzzles</span>
+        <h2>Tactics Books</h2>
+        <p>Open the workbook trainer and solve puzzles on the board.</p>
+        <span class="soon-pill">Open books</span>
+        <span class="hub-icon" aria-hidden="true">♟️</span>
+      </a>
+      <a class="card hub-card courses" href="#/courses">
+        <span class="eyebrow">Lessons & series</span>
+        <h2>Video Courses</h2>
+        <p>Structured video learning from The Chess Academy coaches.</p>
+        <span class="soon-pill">Coming soon</span>
+        <span class="hub-icon" aria-hidden="true">▶️</span>
+      </a>
+    </div>`);
+  bindShell();
+}
+
+function renderCourses() {
+  app.innerHTML = shell(`
+    <nav class="crumbs"><a href="#/home">Back to home</a><span class="sep">/</span><span>Courses</span></nav>
+    <section class="card empty-courses">
+      <div class="big" aria-hidden="true">🎬</div>
+      <h1>Video courses are coming soon</h1>
+      <p>This section is ready. Courses will appear here as soon as they are published.</p>
+      <a class="btn" href="#/home">Back to home</a>
+    </section>`);
+  bindShell();
 }
 
 /* =========================================================
