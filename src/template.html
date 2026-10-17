@@ -11,7 +11,7 @@
 :root{
   --royal:#3A41D8; --royal-2:#2F35C4; --navy:#17175F; --sun:#FFD043; --mint:#3AD4AE; --coral:#FF7A59; --red:#F0533A;
   --cream:#FFF6E3; --sky:#E6F2FE;
-  --bg:var(--cream); --surface:#FFFFFF; --ink:var(--navy); --ink-soft:#4A4E86; --line:var(--navy); --shadow:var(--navy);
+  --bg:var(--cream); --surface:#FFFFFF; --ink:var(--navy); --ink-soft:#4A4E86; --ink-on-pale:#161A22; --line:var(--navy); --shadow:var(--navy);
   --muted:#E4E1F2; --tile:#F3F1FA;
   --sq-light:#FFF3D6; --sq-dark:#7279E6;
   --display:"Lilita One","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
@@ -111,7 +111,8 @@ a{color:inherit}
 .hub-card h2{font-size:clamp(2rem,4vw,3rem);margin:12px 0}
 .hub-card p{font-weight:700;color:var(--ink-soft);max-width:38ch}
 .hub-card .hub-icon{font-size:5rem;line-height:1;margin-top:auto;align-self:flex-end;filter:drop-shadow(3px 3px 0 var(--navy))}
-.hub-card.courses{background:linear-gradient(145deg,var(--surface),var(--sky))}
+.hub-card.courses{background:linear-gradient(145deg,var(--surface),var(--sky));color:var(--ink-on-pale)}
+.hub-card.courses .eyebrow,.hub-card.courses p{color:var(--ink-on-pale)}
 .hub-card.books{background:linear-gradient(145deg,var(--surface),#FFF0B8)}
 .hub-card .soon-pill{display:inline-flex;align-self:flex-start;margin-top:18px;border:2px solid var(--line);border-radius:999px;padding:4px 10px;font-weight:900;background:var(--sun);color:var(--navy)}
 .empty-courses{max-width:760px;margin:42px auto;text-align:center;padding:38px 28px}
@@ -358,7 +359,7 @@ a{color:inherit}
 .wp-theory-body{padding:26px 30px}.wp-theory-body h3{margin:0 0 10px;font-size:1.2rem}
 .wp-theory-body ul{padding-left:22px;display:grid;gap:10px;font-weight:700;line-height:1.5;margin-bottom:24px}
 .wp-example-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
-.wp-example{background:var(--tile);border:2px solid var(--line);border-radius:14px;padding:14px}.wp-example b{text-transform:uppercase;font-size:.78rem;letter-spacing:.06em}.wp-example p{margin-top:5px;font-weight:700}
+.wp-example{background:var(--tile);border:2px solid var(--line);border-radius:14px;padding:14px;color:var(--ink-on-pale)}.wp-example b{text-transform:uppercase;font-size:.78rem;letter-spacing:.06em;color:var(--ink-on-pale)}.wp-example p{margin-top:5px;font-weight:700;color:var(--ink-on-pale)}
 .wp-practice{padding:22px;margin-bottom:22px}
 .wp-practice-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:17px}.wp-practice-head h3{font-size:1.05rem;max-width:850px;line-height:1.4;margin-top:5px}
 .wp-ex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:10px}
@@ -374,7 +375,7 @@ a{color:inherit}
 .wb-sq.sel::before{content:"";position:absolute;inset:4%;border:4px solid var(--mint);border-radius:7px;z-index:3;pointer-events:none}
 .wb-sq .coord{position:absolute;font-size:clamp(7px,1.1vw,11px);font-weight:900;z-index:5;pointer-events:none}.wb-sq .coord.file{right:3px;bottom:2px}.wb-sq .coord.rank{left:3px;top:2px}
 .wp-task{padding:22px;display:grid;gap:16px;position:sticky;top:100px}.wp-task-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.wp-task h2{font-size:1.7rem}
-.wp-instruction{font-weight:800;line-height:1.45;background:var(--tile);border:2px solid var(--line);border-radius:13px;padding:12px}
+.wp-instruction{font-weight:800;line-height:1.45;background:#EEF6FF;color:var(--ink-on-pale);border:2px solid var(--line);border-radius:13px;padding:12px}
 .wp-help{font-size:.9rem;font-weight:800;color:var(--royal);min-height:1em}
 .wp-choice-row{display:flex;flex-wrap:wrap;gap:10px}.wp-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .wp-task-actions,.wp-nav{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -408,7 +409,7 @@ a{color:inherit}
 .tutorial-inline{font-size:.82rem;padding:6px 10px;box-shadow:0 2px 0 var(--navy)}
 .tutorial-video{width:min(1120px,97vw)}
 .tutorial-stage-real{grid-template-columns:minmax(0,1.5fr) minmax(270px,.7fr);align-items:stretch;min-height:560px;padding:20px}
-.tutorial-stage-real .tutorial-demo{min-height:520px;padding:0;background:#eaf0f7;display:block;overflow:hidden}
+.tutorial-stage-real .tutorial-demo{min-height:520px;padding:0;background:#eaf0f7;color:var(--ink-on-pale);display:block;overflow:hidden}
 .tutorial-stage-real .tutorial-copy{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:12px 6px}
 .tutorial-stage-real .tutorial-copy .badge{margin-bottom:10px}
 .tutorial-stage-real .tutorial-copy h3{font-size:2rem}
@@ -420,7 +421,7 @@ a{color:inherit}
 .tut-browser b{margin-left:8px;font-size:.82rem;letter-spacing:.02em}
 .tut-web-body{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(240px,.72fr);gap:18px;padding:18px;align-items:start}
 .tut-real-board .wb-board{width:100%;max-width:500px;margin:0 auto;border-width:3px;box-shadow:0 6px 0 var(--navy);pointer-events:none}
-.tut-real-panel{background:#fff;border:2.5px solid var(--navy);border-radius:16px;box-shadow:0 4px 0 var(--shadow);padding:16px;display:grid;gap:13px;align-content:start;min-height:290px}
+.tut-real-panel{background:#fff;color:#161A22;border:2.5px solid var(--navy);border-radius:16px;box-shadow:0 4px 0 var(--shadow);padding:16px;display:grid;gap:13px;align-content:start;min-height:290px}
 .tut-real-panel .wp-instruction{font-size:.9rem;padding:10px}
 .tut-real-panel .field{margin:0}.tut-real-panel .field label{font-weight:900}
 .tut-real-input{width:100%;border:3px solid var(--navy);border-radius:12px;padding:10px 12px;font:900 1.3rem var(--display);text-align:center;background:#fff;box-shadow:inset 0 0 0 3px transparent;transition:box-shadow .15s,background .15s}
