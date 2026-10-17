@@ -45,12 +45,28 @@ function langSelect(id='lang'){
     '</div></div>';
 }
 function bindLang(){
-  $('.lang-picker').forEach(p=>{
+  $$('.lang-picker').forEach(p=>{
     const b=$('.lang-button',p);
-    b.onclick=e=>{e.stopPropagation(); const open=p.classList.toggle('open'); b.setAttribute('aria-expanded',open?'true':'false'); $('.lang-picker').filter(x=>x!==p).forEach(x=>x.classList.remove('open'));};
-    $('.lang-option',p).forEach(o=>o.onclick=e=>{e.stopPropagation();lang=o.dataset.lang;try{localStorage.setItem('tca.lang',lang)}catch{}render();});
+    b.onclick=e=>{
+      e.stopPropagation();
+      const open=p.classList.toggle('open');
+      b.setAttribute('aria-expanded',open?'true':'false');
+      $$('.lang-picker').filter(x=>x!==p).forEach(x=>{
+        x.classList.remove('open');
+        const xb=$('.lang-button',x); if(xb) xb.setAttribute('aria-expanded','false');
+      });
+    };
+    $$('.lang-option',p).forEach(o=>o.onclick=e=>{
+      e.stopPropagation();
+      lang=o.dataset.lang;
+      try{localStorage.setItem('tca.lang',lang)}catch{}
+      render();
+    });
   });
-  document.onclick=()=>$('.lang-picker').forEach(p=>{p.classList.remove('open');const b=$('.lang-button',p);if(b)b.setAttribute('aria-expanded','false');});
+  document.onclick=()=>$$('.lang-picker').forEach(p=>{
+    p.classList.remove('open');
+    const b=$('.lang-button',p); if(b)b.setAttribute('aria-expanded','false');
+  });
 }
 
 const Store = (() => {
