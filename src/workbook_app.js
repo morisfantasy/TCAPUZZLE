@@ -26,6 +26,62 @@ function bookDescription(){ return BOOK_TEXT[lang]?.description||BOOK.descriptio
 function journeyTitle(){ return BOOK_TEXT[lang]?.journeyTitle||'Your White Pawn journey'; }
 function journeySub(){ return BOOK_TEXT[lang]?.journeySub||'One idea at a time. Every practice page holds twelve diagrams.'; }
 function bookInstruction(ci,pi){ return BOOK_TEXT[lang]?.chapters?.[ci]?.instructions?.[pi]||BOOK.ch[ci].practice[pi].instruction; }
+const TUTORIAL={
+ en:{button:'How to answer',title:'How the exercises work',step:'Step',prev:'Previous',next:'Next',scenes:[
+  ['Read the instruction','Always start here. The instruction tells you whether to type, select squares, move a piece or choose an answer.','<div class="wp-instruction" style="max-width:350px">Write the square.</div>'],
+  ['Type a square','When you see a text box, write the board coordinate, for example e4, then press Check answer.','<input class="tut-input" value="e4" readonly>'],
+  ['Select squares','Tap every square the exercise asks for. Selected squares get a green border. Tap again to remove one.','<div class="tut-grid">'+Array.from({length:16},(_,j)=>'<i class="'+([5,10].includes(j)?'pick':'')+'"></i>').join('')+'</div>'],
+  ['Move a piece','Tap the piece first, then tap its destination. On move exercises the trainer remembers both squares.','<div class="tut-board">'+Array.from({length:16},()=>'<i></i>').join('')+'<span class="tut-piece">♞</span><span class="tut-target"></span></div>'],
+  ['Choose the answer','Some exercises use buttons: YES/NO, checkmate choices, castling, A/B or promotion. Tap the answer that matches the position.','<div><div class="tut-choice"><b>YES</b><b>NO</b></div><div class="tut-promo" style="margin-top:24px"><b>Q</b><b>R</b><b>B</b><b>N</b></div></div>']
+ ]},
+ es:{button:'Cómo responder',title:'Cómo funcionan los ejercicios',step:'Paso',prev:'Anterior',next:'Siguiente',scenes:[
+  ['Lee la instrucción','Empieza siempre aquí. La instrucción te dice si debes escribir, marcar casillas, mover una pieza o elegir una respuesta.','<div class="wp-instruction" style="max-width:350px">Escribe la casilla.</div>'],
+  ['Escribe una casilla','Cuando aparezca un cuadro de texto, escribe la coordenada del tablero, por ejemplo e4, y pulsa Comprobar.','<input class="tut-input" value="e4" readonly>'],
+  ['Marca casillas','Pulsa todas las casillas que pide el ejercicio. Las seleccionadas aparecen con borde verde. Pulsa otra vez para quitar una.','<div class="tut-grid">'+Array.from({length:16},(_,j)=>'<i class="'+([5,10].includes(j)?'pick':'')+'"></i>').join('')+'</div>'],
+  ['Mueve una pieza','Pulsa primero la pieza y después la casilla de destino. El entrenador guarda las dos casillas.','<div class="tut-board">'+Array.from({length:16},()=>'<i></i>').join('')+'<span class="tut-piece">♞</span><span class="tut-target"></span></div>'],
+  ['Elige la respuesta','Algunos ejercicios usan botones: SÍ/NO, jaque mate, enroque, A/B o promoción. Pulsa la opción que corresponda.','<div><div class="tut-choice"><b>SÍ</b><b>NO</b></div><div class="tut-promo" style="margin-top:24px"><b>D</b><b>T</b><b>A</b><b>C</b></div></div>']
+ ]},
+ fr:{button:'Comment répondre',title:'Comment fonctionnent les exercices',step:'Étape',prev:'Précédent',next:'Suivant',scenes:[
+  ['Lisez la consigne','Commencez toujours ici. La consigne indique s’il faut écrire, sélectionner des cases, déplacer une pièce ou choisir une réponse.','<div class="wp-instruction" style="max-width:350px">Écrivez la case.</div>'],
+  ['Écrivez une case','Quand un champ apparaît, écrivez la coordonnée, par exemple e4, puis appuyez sur Vérifier.','<input class="tut-input" value="e4" readonly>'],
+  ['Sélectionnez des cases','Touchez toutes les cases demandées. Les cases sélectionnées ont un bord vert. Touchez de nouveau pour les retirer.','<div class="tut-grid">'+Array.from({length:16},(_,j)=>'<i class="'+([5,10].includes(j)?'pick':'')+'"></i>').join('')+'</div>'],
+  ['Déplacez une pièce','Touchez d’abord la pièce, puis sa case de destination. L’entraîneur mémorise les deux cases.','<div class="tut-board">'+Array.from({length:16},()=>'<i></i>').join('')+'<span class="tut-piece">♞</span><span class="tut-target"></span></div>'],
+  ['Choisissez la réponse','Certains exercices utilisent des boutons : OUI/NON, mat, roque, A/B ou promotion. Touchez la bonne option.','<div><div class="tut-choice"><b>OUI</b><b>NON</b></div><div class="tut-promo" style="margin-top:24px"><b>D</b><b>T</b><b>F</b><b>C</b></div></div>']
+ ]},
+ zh:{button:'如何作答',title:'练习操作教程',step:'步骤',prev:'上一步',next:'下一步',scenes:[
+  ['先读题目要求','先看这里。题目会告诉你需要输入、选择格子、移动棋子还是选择答案。','<div class="wp-instruction" style="max-width:350px">写出格子名称。</div>'],
+  ['输入格子','看到输入框时，填写棋盘坐标，例如 e4，然后点击检查答案。','<input class="tut-input" value="e4" readonly>'],
+  ['选择格子','点击题目要求的所有格子。选中的格子会出现绿色边框，再点一次可以取消。','<div class="tut-grid">'+Array.from({length:16},(_,j)=>'<i class="'+([5,10].includes(j)?'pick':'')+'"></i>').join('')+'</div>'],
+  ['移动棋子','先点击棋子，再点击目标格。训练器会记录起点和终点。','<div class="tut-board">'+Array.from({length:16},()=>'<i></i>').join('')+'<span class="tut-piece">♞</span><span class="tut-target"></span></div>'],
+  ['选择答案','有些练习使用按钮：是/否、将死、易位、A/B 或升变。点击符合局面的答案。','<div><div class="tut-choice"><b>是</b><b>否</b></div><div class="tut-promo" style="margin-top:24px"><b>后</b><b>车</b><b>象</b><b>马</b></div></div>']
+ ]},
+ yue:{button:'點樣作答',title:'練習操作教學',step:'步驟',prev:'上一步',next:'下一步',scenes:[
+  ['先睇題目要求','第一步永遠睇呢度。題目會話你知要輸入、揀格、行棋定揀答案。','<div class="wp-instruction" style="max-width:350px">寫出格名。</div>'],
+  ['輸入格名','見到輸入框，就填棋盤座標，例如 e4，再撳檢查答案。','<input class="tut-input" value="e4" readonly>'],
+  ['揀格','撳晒題目要求嘅格。揀咗嘅格會有綠色邊，再撳一次就取消。','<div class="tut-grid">'+Array.from({length:16},(_,j)=>'<i class="'+([5,10].includes(j)?'pick':'')+'"></i>').join('')+'</div>'],
+  ['行棋','先撳棋子，再撳目的地。訓練器會記住起點同終點。','<div class="tut-board">'+Array.from({length:16},()=>'<i></i>').join('')+'<span class="tut-piece">♞</span><span class="tut-target"></span></div>'],
+  ['揀答案','有啲練習會用按鈕：係/唔係、將死、易位、A/B 或升變。撳符合局面嗰個答案。','<div><div class="tut-choice"><b>係</b><b>唔係</b></div><div class="tut-promo" style="margin-top:24px"><b>后</b><b>車</b><b>象</b><b>馬</b></div></div>']
+ ]}
+};
+function tut(){return TUTORIAL[lang]||TUTORIAL.en;}
+function openTutorial(){
+  const z=tut(); let idx=0,timer=null;
+  const bg=document.createElement('div'); bg.className='tutorial-bg';
+  bg.innerHTML='<section class="tutorial-modal"><div class="tutorial-head"><span class="playdot">▶</span><h2>'+esc(z.title)+'</h2><span class="spacer"></span><button class="tutorial-close" aria-label="Close">✕</button></div><div id="tutorialBody"></div><div class="tutorial-controls"><button class="btn ghost sm" id="tutPrev">‹ '+esc(z.prev)+'</button><div class="dots"></div><button class="btn ghost sm" id="tutNext">'+esc(z.next)+' ›</button></div></section>';
+  document.body.appendChild(bg);
+  function draw(){
+    const sc=z.scenes[idx];
+    $('#tutorialBody',bg).innerHTML='<div class="tutorial-stage"><div class="tutorial-demo">'+sc[2]+'</div><div class="tutorial-copy"><div class="stepnum">'+esc(z.step)+' '+(idx+1)+' / '+z.scenes.length+'</div><h3>'+esc(sc[0])+'</h3><p>'+esc(sc[1])+'</p></div></div>';
+    $('.dots',bg).innerHTML=z.scenes.map((_,j)=>'<button class="dotbtn '+(j===idx?'active':'')+'" data-j="'+j+'" aria-label="'+(j+1)+'"></button>').join('');
+    $$('.dotbtn',bg).forEach(b=>b.onclick=()=>{idx=+b.dataset.j;draw();restart();});
+  }
+  function restart(){clearInterval(timer);timer=setInterval(()=>{idx=(idx+1)%z.scenes.length;draw();},4800);}
+  function close(){clearInterval(timer);bg.remove();}
+  $('.tutorial-close',bg).onclick=close; bg.onclick=e=>{if(e.target===bg)close();};
+  $('#tutPrev',bg).onclick=()=>{idx=(idx-1+z.scenes.length)%z.scenes.length;draw();restart();};
+  $('#tutNext',bg).onclick=()=>{idx=(idx+1)%z.scenes.length;draw();restart();};
+  draw();restart();
+}
 function bookLabel(s){
   if(lang==='en') return s||'';
   let x=String(s||'');
@@ -236,13 +292,14 @@ function renderExercise(id){
   root.innerHTML=shell('<nav class="crumbs"><a href="#/library">'+esc(t('myBooks'))+'</a><span class="sep">/</span><a href="#/book/1">White Pawn</a><span class="sep">/</span><a href="#/book/1/ch/'+ex.ci+'">'+esc(copy.title)+'</a></nav>'+
     '<div class="wp-play"><div class="wp-board-col"><div id="exerciseBoard">'+boardHtml(ex,true)+'</div><div class="wp-book-page">'+esc(t('page'))+' '+pg.page+' · '+esc(t('exercise'))+' '+String(ex.id).padStart(3,'0')+'</div></div>'+
     '<aside class="card wp-task"><div class="wp-task-top"><span class="count">'+esc(t('exercise'))+' '+String(ex.id).padStart(3,'0')+'</span><span class="badge">'+esc(bookLabel(ex.label||''))+'</span></div>'+
-    '<h2>'+esc(copy.title)+'</h2><p class="wp-instruction">'+esc(bookInstruction(ex.ci,ex.pi))+'</p><div class="wp-help" id="help"></div><div id="controls"></div><div id="feedback"></div>'+
+    '<h2>'+esc(copy.title)+'</h2><p class="wp-instruction">'+esc(bookInstruction(ex.ci,ex.pi))+'</p><button type="button" class="tutorial-launch" id="openTutorial"><span class="playdot">▶</span>'+esc(tut().button)+'</button><div class="wp-help" id="help"></div><div id="controls"></div><div id="feedback"></div>'+
     '<div class="wp-task-actions"><button class="btn white sm" id="resetEx">'+esc(t('reset'))+'</button><button class="btn ghost sm" id="showAnswer">'+esc(t('show'))+'</button></div>'+
     '<p class="wp-source-note">'+esc(t('sourceNote'))+'</p><div class="wp-nav">'+(prev?'<a class="btn ghost sm" href="#/play/'+prev.id+'">‹ '+esc(t('previous'))+'</a>':'<span></span>')+
     (next?'<a class="btn ghost sm" href="#/play/'+next.id+'">'+esc(t('next'))+' ›</a>':'<a class="btn ghost sm" href="#/book/1/ch/'+ex.ci+'">'+esc(t('chapterOverview'))+'</a>')+'</div></aside></div>');
   bindShell();
 
   const boardWrap=$('#exerciseBoard'), controls=$('#controls'), help=$('#help'), fb=$('#feedback');
+  const tutBtn=$('#openTutorial'); if(tutBtn)tutBtn.onclick=openTutorial;
   function paintBoard(){ boardWrap.innerHTML=boardHtml(ex,true,[...state.selected]); bindBoard(); }
   function bindBoard(){
     $$('.wb-sq',boardWrap).forEach(s=>s.onclick=()=>{
