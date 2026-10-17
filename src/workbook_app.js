@@ -609,6 +609,7 @@ function renderExercise(id){
     return true;
   }
   function bindMoveBoard(){
+    const board=$('.wb-board',boardWrap); if(board)board.classList.add('move-enabled');
     const original=parseFen(ex.fen);
     $$('.wb-sq',boardWrap).forEach(cell=>{
       const sq=cell.dataset.sq;
