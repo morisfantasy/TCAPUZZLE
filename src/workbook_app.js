@@ -168,7 +168,7 @@ function boardHtml(ex,interactive=true,sel=[]){
   const n=ex.size||8, files='abcdefghi'.slice(0,n), map=ex.size===9?(ex.pieces||{}):parseFen(ex.fen), selected=new Set(sel);
   let h='<div class="wb-board '+(ex.reversedColors?'reversed':'')+'" style="--n:'+n+'">';
   for(let row=n;row>=1;row--)for(let fi=0;fi<n;fi++){
-    const sq=files[fi]+row, p=map[sq], dark=((fi+row)%2===0);
+    const sq=files[fi]+row, p=map[sq], dark=((fi+row)%2===1);
     h+='<button type="button" class="wb-sq '+(dark?'d ':'')+(selected.has(sq)?'sel ':'')+((ex.markers||[]).includes(sq)?'marked ':'')+'" data-sq="'+sq+'" '+(!interactive?'tabindex="-1"':'')+'>'+
       (p?'<span class="pc">'+pieceSVG(p)+'</span>':'')+
       (row===1?'<span class="coord file">'+files[fi]+'</span>':'')+(fi===0?'<span class="coord rank">'+row+'</span>':'')+'</button>';
