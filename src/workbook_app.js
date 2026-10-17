@@ -278,6 +278,7 @@ const ALL=[];
 BOOK.ch.forEach((ch,ci)=>ch.practice.forEach((pg,pi)=>pg.exercises.forEach((ex,ei)=>ALL.push(Object.assign({ci,pi,ei,type:pg.type,instruction:pg.instruction,page:pg.page},ex)))));
 const BY_ID=Object.fromEntries(ALL.map(x=>[x.id,x]));
 const chapterExercises=ci=>ALL.filter(x=>x.ci===ci);
+const isFirstExerciseInChapter=ex=>chapterExercises(ex.ci)[0]?.id===ex.id;
 function stat(list){
   let c=0,w=0; list.forEach(x=>{const r=rec(keyOf(x.id)); if(r?.s==='c')c++; else if(r?.s==='w')w++;});
   return {c,w,u:list.length-c-w,total:list.length,pct:list.length?Math.round(100*c/list.length):0};
@@ -367,12 +368,11 @@ function renderChapter(ci){
     (copy.examples?.length?'<h3>'+esc(t('examples'))+'</h3><div class="wp-example-grid">'+pairExamples(copy.examples)+'</div>':'')+'</div></section>';
   const pages=ch.practice.map((pg,pi)=>{
     const s=stat(pg.exercises);
-    return '<section class="card wp-practice"><div class="wp-practice-head"><div><span class="mini-label">'+esc(t('page'))+' '+pg.page+'</span><h3>'+esc(bookInstruction(ci,pi))+'</h3></div><div class="wp-practice-tools"><button type="button" class="tutorial-launch tutorial-inline" data-tut-ex="'+pg.exercises[0].id+'"><span class="playdot">▶</span>'+esc((TUTORIAL_COPY[lang]||TUTORIAL_COPY.en).button)+'</button><span class="badge">'+s.c+'/'+s.total+'</span></div></div><div class="wp-ex-grid">'+pg.exercises.map(ex=>exerciseTile(ex)).join('')+'</div></section>';
+    return '<section class="card wp-practice"><div class="wp-practice-head"><div><span class="mini-label">'+esc(t('page'))+' '+pg.page+'</span><h3>'+esc(bookInstruction(ci,pi))+'</h3></div><span class="badge">'+s.c+'/'+s.total+'</span></div><div class="wp-ex-grid">'+pg.exercises.map(ex=>exerciseTile(ex)).join('')+'</div></section>';
   }).join('');
   root.innerHTML=shell('<nav class="crumbs"><a href="#/library">'+esc(t('myBooks'))+'</a><span class="sep">/</span><a href="#/book/1">White Pawn</a><span class="sep">/</span><span>'+esc(t('chapter'))+' '+(ci+1)+'</span></nav>'+
     '<header class="wp-chapter-head"><span class="wp-ch-num">'+String(ci+1).padStart(2,'0')+'</span><div><span class="mini-label">'+esc(t('chapter'))+' '+(ci+1)+'</span><h1>'+esc(copy.title)+'</h1><p>'+esc(copy.subtitle)+'</p></div></header>'+theory+'<div class="section-h"><h2>'+esc(t('practice'))+'</h2></div>'+pages);
   bindShell();
-  $('[data-tut-ex]').forEach(b=>b.onclick=()=>openTutorial(BY_ID[+b.dataset.tutEx]));
 }
 function pairExamples(a){
   let h=''; for(let i=0;i<a.length;i+=2)h+='<div class="wp-example"><b>'+esc(a[i]||'')+'</b><p>'+esc(a[i+1]||'')+'</p></div>'; return h;
@@ -413,7 +413,7 @@ function renderExercise(id){
   root.innerHTML=shell('<nav class="crumbs"><a href="#/library">'+esc(t('myBooks'))+'</a><span class="sep">/</span><a href="#/book/1">White Pawn</a><span class="sep">/</span><a href="#/book/1/ch/'+ex.ci+'">'+esc(copy.title)+'</a></nav>'+
     '<div class="wp-play"><div class="wp-board-col"><div id="exerciseBoard">'+boardHtml(ex,true)+'</div><div class="wp-book-page">'+esc(t('page'))+' '+pg.page+' · '+esc(t('exercise'))+' '+String(ex.id).padStart(3,'0')+'</div></div>'+
     '<aside class="card wp-task"><div class="wp-task-top"><span class="count">'+esc(t('exercise'))+' '+String(ex.id).padStart(3,'0')+'</span><span class="badge">'+esc(bookLabel(ex.label||''))+'</span></div>'+
-    '<h2>'+esc(copy.title)+'</h2><p class="wp-instruction">'+esc(bookInstruction(ex.ci,ex.pi))+'</p><button type="button" class="tutorial-launch" id="openTutorial"><span class="playdot">▶</span>'+esc((TUTORIAL_COPY[lang]||TUTORIAL_COPY.en).button)+'</button><div class="wp-help" id="help"></div><div id="controls"></div><div id="feedback"></div>'+
+    '<h2>'+esc(copy.title)+'</h2><p class="wp-instruction">'+esc(bookInstruction(ex.ci,ex.pi))+'</p>'+(isFirstExerciseInChapter(ex)?'<button type="button" class="tutorial-launch" id="openTutorial"><span class="playdot">▶</span>'+esc((TUTORIAL_COPY[lang]||TUTORIAL_COPY.en).button)+'</button>':'')+'<div class="wp-help" id="help"></div><div id="controls"></div><div id="feedback"></div>'+
     '<div class="wp-task-actions"><button class="btn white sm" id="resetEx">'+esc(t('reset'))+'</button><button class="btn ghost sm" id="showAnswer">'+esc(t('show'))+'</button></div>'+
     '<p class="wp-source-note">'+esc(t('sourceNote'))+'</p><div class="wp-nav">'+(prev?'<a class="btn ghost sm" href="#/play/'+prev.id+'">‹ '+esc(t('previous'))+'</a>':'<span></span>')+
     (next?'<a class="btn ghost sm" href="#/play/'+next.id+'">'+esc(t('next'))+' ›</a>':'<a class="btn ghost sm" href="#/book/1/ch/'+ex.ci+'">'+esc(t('chapterOverview'))+'</a>')+'</div></aside></div>');
@@ -496,7 +496,7 @@ function renderExercise(id){
   $('#showAnswer').onclick=()=>{mark(keyOf(ex.id),'w');fb.innerHTML='<div class="wp-feedback info"><b>'+esc(t('answer'))+'</b><p>'+esc(ex.answer)+'</p></div>';};
   help.textContent=(ex.type==='move'||ex.type==='moveguard')?t('selectMove'):ex.type==='select'?t('selectSquares'):'';
   paintBoard(); renderControls(); rebindDirect();
-  if(!tutorialWasSeen(ex)) setTimeout(()=>openTutorial(ex),500);
+  if(isFirstExerciseInChapter(ex) && !tutorialWasSeen(ex)) setTimeout(()=>openTutorial(ex),500);
 }
 
 function render(){
