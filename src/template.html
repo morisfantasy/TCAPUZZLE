@@ -11,7 +11,7 @@
 :root{
   --royal:#3A41D8; --royal-2:#2F35C4; --navy:#17175F; --sun:#FFD043; --mint:#3AD4AE; --coral:#FF7A59; --red:#F0533A;
   --cream:#FFF6E3; --sky:#E6F2FE;
-  --bg:var(--cream); --surface:#FFFFFF; --ink:var(--navy); --ink-soft:#4A4E86; --ink-on-pale:#161A22; --line:var(--navy); --shadow:var(--navy);
+  --bg:var(--cream); --surface:#FFFFFF; --ink:var(--navy); --ink-soft:#4B5058; --ink-on-pale:#15171C; --line:var(--navy); --shadow:var(--navy);
   --muted:#E4E1F2; --tile:#F3F1FA;
   --sq-light:#FFF3D6; --sq-dark:#7279E6;
   --display:"Lilita One","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
@@ -440,6 +440,73 @@ a{color:inherit}
 .tutorial-stage-real .wb-sq.marked::after{border-width:4px}
 @media(max-width:900px){.tutorial-stage-real{grid-template-columns:1fr;min-height:0}.tutorial-stage-real .tutorial-demo{min-height:0}.tut-web-shell{min-height:0}.tut-web-body{grid-template-columns:minmax(0,1fr) minmax(190px,.72fr)}.tutorial-stage-real .tutorial-copy{padding:4px 2px}}
 @media(max-width:650px){.tutorial-bg{padding:8px}.tutorial-modal{border-radius:16px}.tutorial-head{padding:10px 12px}.tutorial-head h2{font-size:1.05rem}.tutorial-stage-real{padding:10px;gap:12px}.tut-browser{height:34px;padding:0 8px}.tut-browser b{font-size:.66rem}.tut-web-body{grid-template-columns:1fr;padding:10px;gap:12px}.tut-real-board .wb-board{max-width:330px}.tut-real-panel{min-height:0;padding:12px}.tutorial-stage-real .tutorial-copy h3{font-size:1.35rem}.tutorial-stage-real .tutorial-copy p{font-size:.9rem}.tutorial-inline{font-size:.76rem}.wp-practice-tools{justify-content:flex-start}}
+
+
+/* ---------- global contrast pass ---------- */
+/* Pale/light UI surfaces use neutral near-black text, not blue-on-blue. */
+.card,.auth-card,.book-body,.chap,.tile,.panel,.wp-practice,.wp-theory-body,.wp-example,.wp-task,.wp-instruction,
+.empty-courses,.lang-menu,.lang-button,.tutorial-modal,.tutorial-copy,.tut-real-panel,.demo-note,.book.soon .cover{
+  color:var(--ink-on-pale);
+}
+.wp-example b,.wp-example p,.wp-instruction,.hub-card.courses,.hub-card.courses h2,.hub-card.courses p,.hub-card.courses .eyebrow,
+.tutorial-stage-real .tutorial-copy h3,.tutorial-stage-real .tutorial-copy p,.tut-real-panel .mini-label{
+  color:var(--ink-on-pale);
+}
+.btn:not(.royal),.avatar,.bubble,.hub-card .soon-pill,.cover.sun,.cover.mint,.cover.coral,
+.chap.done .num,.badge.done,.badge.prog,.badge.fix,.tile.c,.tile.w,.feedback.ok,.feedback.bad,.feedback.go,
+.moves .m.u,.moves .m.x,.wp-ch-num,.tutorial-launch,.tutorial-close,.chip,.ring b{
+  color:var(--ink-on-pale)!important;
+}
+.tabs button:not([aria-selected="true"]),.book.soon .cover,.badge.new,.demo-note,.wp-progress-meta,.wp-book-page,.wp-source-note{
+  color:#4B5058;
+}
+.lang-option,.lang-option .short{color:var(--ink-on-pale)}
+.lang-option .tick{color:#252A84}
+.form-error{color:#6A1B0B}
+
+/* Dark/branded surfaces always use light text. */
+.topbar,.auth,.cover.royal,.welcome.royal,.turn.b,.wp-cover,.wp-book-head,.wp-theory-head,.tutorial-head,.tut-browser{
+  color:#fff;
+}
+.welcome.royal,.welcome.royal *,.wp-book-head h1,.wp-book-head p,.wp-theory-head h2,.wp-theory-head p,.tutorial-head h2,.tut-browser b{
+  color:#fff!important;
+}
+.wp-cover *{color:#f7f8fb}
+.cover.royal *,.turn.b *{color:#fff}
+
+/* Light coloured feature panels retain dark neutral text. */
+.welcome.sun,.welcome.sun *,.welcome.mint,.welcome.mint *,.welcome.coral,.welcome.coral *,
+.feedback.ok *,.feedback.bad *,.feedback.go *{
+  color:var(--ink-on-pale)!important;
+}
+
+/* Preserve automatic/manual dark mode legibility. */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .card,
+  :root:not([data-theme="light"]) .auth-card,
+  :root:not([data-theme="light"]) .book-body,
+  :root:not([data-theme="light"]) .chap,
+  :root:not([data-theme="light"]) .tile,
+  :root:not([data-theme="light"]) .panel,
+  :root:not([data-theme="light"]) .wp-practice,
+  :root:not([data-theme="light"]) .wp-theory-body,
+  :root:not([data-theme="light"]) .wp-task,
+  :root:not([data-theme="light"]) .tutorial-copy{
+    color:var(--ink);
+  }
+}
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .auth-card,
+:root[data-theme="dark"] .book-body,
+:root[data-theme="dark"] .chap,
+:root[data-theme="dark"] .tile,
+:root[data-theme="dark"] .panel,
+:root[data-theme="dark"] .wp-practice,
+:root[data-theme="dark"] .wp-theory-body,
+:root[data-theme="dark"] .wp-task,
+:root[data-theme="dark"] .tutorial-copy{
+  color:var(--ink);
+}
 
 </style>
 </head>
