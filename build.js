@@ -11,6 +11,16 @@ for (let i = 1; i <= 10; i++) {
 }
 bookData += '\nconst BOOKS=[Object.assign({}, WHITE_PAWN_META, {ch: WHITE_PAWN_CHAPTERS})];\n';
 
+// Validate the imported workbook before shipping it.
+const vm = require('vm');
+const check = {};
+vm.createContext(check);
+vm.runInContext(bookData + '\nthis.__book=BOOKS[0];', check);
+const ids = check.__book.ch.flatMap(ch => ch.practice.flatMap(p => p.exercises.map(e => e.id)));
+if (check.__book.ch.length !== 10 || ids.length !== 300 || ids.some((id, i) => id !== i + 1)) {
+  throw new Error('White Pawn import integrity check failed: expected 10 chapters and exercises 1-300.');
+}
+
 const data = bookData +
   '\nconst PIECES=' + JSON.stringify(pieces) + ';\nconst LOGO="' + logo + '";';
 const appCode = fs.readFileSync(src('workbook_app.js'), 'utf8');
