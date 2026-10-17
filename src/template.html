@@ -305,6 +305,70 @@ a{color:inherit}
 
 .empty-note{padding:22px;text-align:center;font-weight:700;color:var(--ink-soft)}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--navy);color:#fff;font-weight:800;padding:.7em 1.3em;border-radius:999px;border:2.5px solid #fff;z-index:150;animation:pop .25s}
+
+/* ---------- White Pawn digital workbook ---------- */
+.wp-library{max-width:980px;margin:0 auto}
+.wp-book-card{display:grid;grid-template-columns:minmax(250px,330px) 1fr;overflow:hidden}
+.wp-cover{background:#132f3a;color:#f4efe2;min-height:440px;padding:34px;position:relative;display:flex;flex-direction:column;border-right:3px solid var(--navy)}
+.wp-cover-kicker{font-size:.78rem;letter-spacing:.16em;font-weight:900;color:#d5b979}
+.wp-cover-title{font-family:Georgia,serif;font-size:clamp(2.6rem,6vw,4.2rem);line-height:.94;font-weight:900;margin-top:44px}
+.wp-cover-rule{width:78px;border-top:3px solid #d5b979;margin:20px 0}
+.wp-cover-level{font-weight:900;letter-spacing:.08em;color:#d5b979}
+.wp-cover-piece{position:absolute;width:150px;height:150px;right:20px;bottom:18px}
+.wp-cover-piece svg,.wp-big-pawn svg{width:100%;height:100%}
+.wp-book-info{padding:36px;display:flex;flex-direction:column;align-items:flex-start;gap:14px}
+.wp-book-info h2{font-size:2.4rem}
+.wp-book-info p{font-weight:650;color:var(--ink-soft);max-width:50ch}
+.wp-metrics{font-weight:800}
+.wp-progress{width:100%;display:grid;gap:7px;margin:5px 0 10px}
+.wp-progress-track{height:12px;border:2px solid var(--line);border-radius:999px;overflow:hidden;background:var(--tile)}
+.wp-progress-track i{display:block;height:100%;background:var(--mint)}
+.wp-progress-meta{display:flex;justify-content:space-between;font-weight:800;font-size:.84rem;color:var(--ink-soft)}
+.wp-book-head{display:flex;justify-content:space-between;gap:24px;align-items:center;background:#132f3a;color:#fff;border:3px solid var(--navy);border-radius:24px;padding:30px 34px;margin-bottom:24px;box-shadow:0 7px 0 var(--shadow)}
+.wp-book-head h1{font-size:clamp(2.5rem,6vw,4rem);margin:8px 0}
+.wp-book-head p{font-weight:700;max-width:60ch;color:#e7ecee}
+.wp-big-pawn{width:150px;height:150px;flex:none}
+.wp-journey{margin:26px 0 18px}
+.wp-journey p{font-weight:700;color:var(--ink-soft);margin-top:4px}
+.wp-chapters{display:grid;gap:14px}
+.wp-chapter-card{display:grid;grid-template-columns:70px 1fr 30px;gap:20px;align-items:center;padding:20px 22px;text-decoration:none;transition:transform .1s}
+.wp-chapter-card:hover{transform:translateY(-2px)}
+.wp-ch-num{width:60px;height:60px;border-radius:16px;background:var(--sun);border:2px solid var(--navy);display:grid;place-items:center;font-family:var(--display);font-size:1.4rem;color:var(--navy)}
+.wp-chapter-card h2{font-size:1.4rem;margin:2px 0}.wp-chapter-card p{font-weight:700;color:var(--ink-soft)}
+.wp-ch-meta{font-size:.84rem;font-weight:800;color:var(--ink-soft);margin-top:7px}
+.wp-arrow{font-size:2rem;font-weight:900}
+.wp-chapter-head{display:flex;align-items:center;gap:18px;margin:15px 0 24px}
+.wp-chapter-head h1{font-size:clamp(2rem,5vw,3rem)}.wp-chapter-head p{font-weight:800;color:var(--ink-soft)}
+.wp-theory{overflow:hidden;margin-bottom:26px}
+.wp-theory-head{background:#132f3a;color:#fff;padding:26px 30px}.wp-theory-head h2{font-size:2rem;margin:4px 0}.wp-theory-head p{font-weight:800;color:#e7ecee}
+.wp-theory-body{padding:26px 30px}.wp-theory-body h3{margin:0 0 10px;font-size:1.2rem}
+.wp-theory-body ul{padding-left:22px;display:grid;gap:10px;font-weight:700;line-height:1.5;margin-bottom:24px}
+.wp-example-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.wp-example{background:var(--tile);border:2px solid var(--line);border-radius:14px;padding:14px}.wp-example b{text-transform:uppercase;font-size:.78rem;letter-spacing:.06em}.wp-example p{margin-top:5px;font-weight:700}
+.wp-practice{padding:22px;margin-bottom:22px}
+.wp-practice-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:17px}.wp-practice-head h3{font-size:1.05rem;max-width:850px;line-height:1.4;margin-top:5px}
+.wp-ex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:10px}
+.wp-ex-tile{min-height:58px;border:2px solid var(--line);border-radius:12px;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;font-family:var(--display);font-weight:900;background:var(--surface);box-shadow:0 3px 0 var(--shadow)}
+.wp-ex-tile.c{background:var(--mint)}.wp-ex-tile.w{background:var(--coral)}
+.wp-play{display:grid;grid-template-columns:minmax(0,620px) minmax(310px,1fr);gap:28px;align-items:start}
+.wp-board-col{display:grid;gap:10px}.wp-book-page{font-weight:800;color:var(--ink-soft);font-size:.88rem}
+.wb-board{--n:8;width:100%;aspect-ratio:1;display:grid;grid-template-columns:repeat(var(--n),1fr);grid-template-rows:repeat(var(--n),1fr);border:3px solid var(--navy);box-shadow:0 7px 0 var(--navy);overflow:hidden;background:#fff}
+.wb-sq{position:relative;border:0;border-radius:0;padding:0;margin:0;background:#f4efe2;cursor:pointer;display:block}
+.wb-sq.d{background:#b9bec0}.wb-board.reversed .wb-sq{background:#b9bec0}.wb-board.reversed .wb-sq.d{background:#f4efe2}
+.wb-sq .pc{position:absolute;inset:5%;pointer-events:none}.wb-sq .pc svg{width:100%;height:100%;display:block}
+.wb-sq.marked::after{content:"";position:absolute;inset:14%;border:3px solid #17175F;border-radius:50%;pointer-events:none;z-index:4}
+.wb-sq.sel::before{content:"";position:absolute;inset:4%;border:4px solid var(--mint);border-radius:7px;z-index:3;pointer-events:none}
+.wb-sq .coord{position:absolute;font-size:clamp(7px,1.1vw,11px);font-weight:900;z-index:5;pointer-events:none}.wb-sq .coord.file{right:3px;bottom:2px}.wb-sq .coord.rank{left:3px;top:2px}
+.wp-task{padding:22px;display:grid;gap:16px;position:sticky;top:100px}.wp-task-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.wp-task h2{font-size:1.7rem}
+.wp-instruction{font-weight:800;line-height:1.45;background:var(--tile);border:2px solid var(--line);border-radius:13px;padding:12px}
+.wp-help{font-size:.9rem;font-weight:800;color:var(--royal);min-height:1em}
+.wp-choice-row{display:flex;flex-wrap:wrap;gap:10px}.wp-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.wp-task-actions,.wp-nav{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.wp-source-note{font-size:.78rem;line-height:1.35;color:var(--ink-soft);font-weight:700;border-top:1px solid var(--line);padding-top:12px}
+.wp-feedback{border:2px solid var(--line);border-radius:13px;padding:12px 14px;font-weight:700}.wp-feedback p{margin-top:5px}.wp-feedback.ok{background:var(--mint)}.wp-feedback.bad{background:var(--coral)}.wp-feedback.info{background:var(--sun)}
+@media(max-width:920px){.wp-play{grid-template-columns:1fr}.wp-task{position:static}.wp-book-card{grid-template-columns:1fr}.wp-cover{min-height:300px;border-right:0;border-bottom:3px solid var(--navy)}}
+@media(max-width:640px){.wp-cover{padding:24px}.wp-cover-piece{width:110px;height:110px}.wp-book-info{padding:24px}.wp-big-pawn{width:90px;height:90px}.wp-chapter-card{grid-template-columns:54px 1fr 20px;padding:16px;gap:12px}.wp-ch-num{width:48px;height:48px;font-size:1.05rem}.wp-theory-head,.wp-theory-body{padding:20px}.wp-practice{padding:16px}.wp-choice-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
