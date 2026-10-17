@@ -402,6 +402,44 @@ a{color:inherit}
 @keyframes tutPop{to{transform:scale(1.08)}}@keyframes tutPulse{to{transform:scale(1.08)}}@keyframes tutMove{0%,20%{transform:translate(0,0)}65%,90%{transform:translate(165px,-160px)}100%{transform:translate(0,0)}}@keyframes tutChoice{0%,40%,100%{background:#fff}50%,80%{background:var(--sun)}}
 @media(max-width:700px){.tutorial-stage{grid-template-columns:1fr;min-height:0;padding:16px}.tutorial-demo{min-height:230px}.tutorial-copy h3{font-size:1.45rem}.tut-board{width:220px;height:220px}.tut-piece{animation-name:tutMoveMobile}@keyframes tutMoveMobile{0%,20%{transform:translate(0,0)}65%,90%{transform:translate(125px,-120px)}100%{transform:translate(0,0)}}}
 
+
+/* contextual high-fidelity exercise tutorials */
+.wp-practice-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.tutorial-inline{font-size:.82rem;padding:6px 10px;box-shadow:0 2px 0 var(--navy)}
+.tutorial-video{width:min(1120px,97vw)}
+.tutorial-stage-real{grid-template-columns:minmax(0,1.5fr) minmax(270px,.7fr);align-items:stretch;min-height:560px;padding:20px}
+.tutorial-stage-real .tutorial-demo{min-height:520px;padding:0;background:#eaf0f7;display:block;overflow:hidden}
+.tutorial-stage-real .tutorial-copy{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:12px 6px}
+.tutorial-stage-real .tutorial-copy .badge{margin-bottom:10px}
+.tutorial-stage-real .tutorial-copy h3{font-size:2rem}
+.tutorial-stage-real .tutorial-copy p{font-size:1rem}
+.tutorial-stage-real .tutorial-copy .btn{margin-top:14px}
+.tut-web-shell{position:relative;width:100%;height:100%;min-height:520px;background:#f5f7fb;overflow:hidden}
+.tut-browser{height:46px;background:var(--royal);color:#fff;display:flex;align-items:center;gap:7px;padding:0 14px;border-bottom:3px solid var(--navy)}
+.tut-browser>span{width:11px;height:11px;border-radius:50%;background:#fff;border:2px solid var(--navy)}.tut-browser>span:nth-child(1){background:var(--coral)}.tut-browser>span:nth-child(2){background:var(--sun)}.tut-browser>span:nth-child(3){background:var(--mint)}
+.tut-browser b{margin-left:8px;font-size:.82rem;letter-spacing:.02em}
+.tut-web-body{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(240px,.72fr);gap:18px;padding:18px;align-items:start}
+.tut-real-board .wb-board{width:100%;max-width:500px;margin:0 auto;border-width:3px;box-shadow:0 6px 0 var(--navy);pointer-events:none}
+.tut-real-panel{background:#fff;border:2.5px solid var(--navy);border-radius:16px;box-shadow:0 4px 0 var(--shadow);padding:16px;display:grid;gap:13px;align-content:start;min-height:290px}
+.tut-real-panel .wp-instruction{font-size:.9rem;padding:10px}
+.tut-real-panel .field{margin:0}.tut-real-panel .field label{font-weight:900}
+.tut-real-input{width:100%;border:3px solid var(--navy);border-radius:12px;padding:10px 12px;font:900 1.3rem var(--display);text-align:center;background:#fff;box-shadow:inset 0 0 0 3px transparent;transition:box-shadow .15s,background .15s}
+.tut-real-input:focus,.tut-real-input.typing{box-shadow:inset 0 0 0 3px var(--sun);background:#fffdf2}
+.tut-action-box{display:grid;gap:10px}
+.tutorial-pointer{position:absolute;left:-20px;top:-20px;z-index:15;font-size:32px;filter:drop-shadow(0 3px 1px rgba(0,0,0,.25));transition:transform .58s cubic-bezier(.2,.75,.25,1);pointer-events:none;transform-origin:8px 4px}
+.tutorial-pointer.tap{transform-origin:8px 4px;scale:.82}
+.tutorial-ripple{position:absolute;z-index:14;width:18px;height:18px;border:4px solid var(--sun);border-radius:50%;transform:translate(-50%,-50%) scale(.2);opacity:0;pointer-events:none}
+.tutorial-ripple.go{animation:tutRipple .55s ease-out}
+@keyframes tutRipple{0%{opacity:1;transform:translate(-50%,-50%) scale(.2)}100%{opacity:0;transform:translate(-50%,-50%) scale(2.8)}}
+.tut-live-selected::before{content:"";position:absolute;inset:4%;border:5px solid var(--mint);border-radius:9px;z-index:9;box-shadow:0 0 0 2px rgba(23,23,95,.15);animation:tutSelect .28s ease-out}
+@keyframes tutSelect{from{transform:scale(.72);opacity:.1}to{transform:scale(1);opacity:1}}
+.tut-arrive{animation:tutArrive .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes tutArrive{from{transform:scale(.65);opacity:.25}to{transform:scale(1);opacity:1}}
+.tut-check.mint,[data-tut-choice].mint,[data-tut-promo].mint{background:var(--mint)!important}
+.tutorial-stage-real .wb-sq.marked::after{border-width:4px}
+@media(max-width:900px){.tutorial-stage-real{grid-template-columns:1fr;min-height:0}.tutorial-stage-real .tutorial-demo{min-height:0}.tut-web-shell{min-height:0}.tut-web-body{grid-template-columns:minmax(0,1fr) minmax(190px,.72fr)}.tutorial-stage-real .tutorial-copy{padding:4px 2px}}
+@media(max-width:650px){.tutorial-bg{padding:8px}.tutorial-modal{border-radius:16px}.tutorial-head{padding:10px 12px}.tutorial-head h2{font-size:1.05rem}.tutorial-stage-real{padding:10px;gap:12px}.tut-browser{height:34px;padding:0 8px}.tut-browser b{font-size:.66rem}.tut-web-body{grid-template-columns:1fr;padding:10px;gap:12px}.tut-real-board .wb-board{max-width:330px}.tut-real-panel{min-height:0;padding:12px}.tutorial-stage-real .tutorial-copy h3{font-size:1.35rem}.tutorial-stage-real .tutorial-copy p{font-size:.9rem}.tutorial-inline{font-size:.76rem}.wp-practice-tools{justify-content:flex-start}}
+
 </style>
 </head>
 <body>
