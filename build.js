@@ -13,10 +13,13 @@ bookData += '\nconst BOOKS=[Object.assign({}, WHITE_PAWN_META, {ch: WHITE_PAWN_C
 
 const data = bookData +
   '\nconst PIECES=' + JSON.stringify(pieces) + ';\nconst LOGO="' + logo + '";';
+const appCode = fs.readFileSync(src('workbook_app.js'), 'utf8');
+// Fail the build immediately if the browser application contains a syntax error.
+new Function(appCode);
 const html = fs.readFileSync(src('template.html'), 'utf8')
   .replace('/*MINICHESS*/', () => fs.readFileSync(src('minichess.js'), 'utf8'))
   .replace('/*DATA*/', () => data)
-  .replace('/*APP*/', () => fs.readFileSync(src('workbook_app.js'), 'utf8'));
+  .replace('/*APP*/', () => appCode);
 fs.mkdirSync(path.join(__dirname, 'public'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, 'public', 'index.html'), html);
 console.log('public/index.html built (' + Math.round(html.length / 1024) + ' KB)');
