@@ -196,8 +196,12 @@ function openTutorial(ex){
   const z=tutorialText(ex);
   const bg=document.createElement('div');bg.className='tutorial-bg';
   bg.innerHTML='<section class="tutorial-modal tutorial-video"><div class="tutorial-head"><span class="playdot">▶</span><h2>'+esc(z.item.title)+'</h2><span class="spacer"></span><button class="tutorial-close" aria-label="Close">✕</button></div><div class="tutorial-stage tutorial-stage-real"><div class="tutorial-demo" id="tutorialDemo"></div><div class="tutorial-copy"><span class="badge prog">'+esc(t('liveDemo'))+'</span><h3>'+esc(z.item.title)+'</h3><p>'+esc(z.item.body)+'</p><button class="btn white" id="tutorialReplay">↻ '+esc(z.root.replay)+'</button><button class="btn" id="tutorialDone">'+esc(z.root.close)+'</button></div></div></section>';
+  const previousBodyOverflow=document.body.style.overflow;
+  const onKey=e=>{if(e.key==='Escape')close();};
+  function close(){bg._tutorialRun=(bg._tutorialRun||0)+1;bg.remove();document.body.style.overflow=previousBodyOverflow;document.removeEventListener('keydown',onKey);}
   document.body.appendChild(bg);
-  function close(){bg._tutorialRun=(bg._tutorialRun||0)+1;bg.remove();}
+  document.body.style.overflow='hidden';
+  document.addEventListener('keydown',onKey);
   $('.tutorial-close',bg).onclick=close;$('#tutorialDone',bg).onclick=close;bg.onclick=e=>{if(e.target===bg)close();};
   $('#tutorialReplay',bg).onclick=()=>runTutorial(bg,ex);
   runTutorial(bg,ex);
