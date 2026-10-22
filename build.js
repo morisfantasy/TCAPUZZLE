@@ -3,6 +3,7 @@ const fs = require('fs'), path = require('path');
 const src = p => path.join(__dirname, 'src', p);
 const pieces = JSON.parse(fs.readFileSync(src('data/pieces.json'), 'utf8'));
 const logo = 'data:image/png;base64,' + fs.readFileSync(src('data/logo.png')).toString('base64');
+const bookCover = 'data:image/svg+xml;base64,' + Buffer.from(fs.readFileSync(src('data/white_pawn/cover.svg'), 'utf8')).toString('base64');
 
 const wp = src('data/white_pawn');
 let bookData = fs.readFileSync(path.join(wp, 'books.js'), 'utf8') + '\n';
@@ -22,7 +23,7 @@ if (check.__book.ch.length !== 10 || ids.length !== 300 || ids.some((id, i) => i
 }
 
 const data = bookData +
-  '\nconst PIECES=' + JSON.stringify(pieces) + ';\nconst LOGO="' + logo + '";';
+  '\nconst PIECES=' + JSON.stringify(pieces) + ';\nconst LOGO="' + logo + '";\nconst BOOK_COVER="' + bookCover + '";';
 const appCode = fs.readFileSync(src('workbook_app.js'), 'utf8');
 // Fail the build immediately if the browser application contains a syntax error.
 new Function(appCode);
