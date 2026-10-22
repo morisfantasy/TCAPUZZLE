@@ -3,7 +3,7 @@ const fs = require('fs'), path = require('path');
 const src = p => path.join(__dirname, 'src', p);
 const pieces = JSON.parse(fs.readFileSync(src('data/pieces.json'), 'utf8'));
 const logo = 'data:image/png;base64,' + fs.readFileSync(src('data/logo.png')).toString('base64');
-const bookCover = 'data:image/svg+xml;base64,' + Buffer.from(fs.readFileSync(src('data/white_pawn/cover.svg'), 'utf8')).toString('base64');
+const bookCover = 'data:image/webp;base64,' + fs.readFileSync(src('data/white_pawn/cover.b64'), 'utf8').trim();
 
 const wp = src('data/white_pawn');
 let bookData = fs.readFileSync(path.join(wp, 'books.js'), 'utf8') + '\n';
