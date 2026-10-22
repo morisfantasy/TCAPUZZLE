@@ -191,7 +191,7 @@ async function runTutorial(bg,ex){
   if(document.body.contains(bg))runTutorial(bg,ex);
 }
 function openTutorial(ex){
-  if(!ex || !isFirstExerciseInChapter(ex))return;
+  if(!ex || !isFirstExerciseInSubchapter(ex))return;
   rememberTutorial(ex);
   const z=tutorialText(ex);
   const bg=document.createElement('div');bg.className='tutorial-bg';
@@ -413,7 +413,7 @@ const ALL=[];
 BOOK.ch.forEach((ch,ci)=>ch.practice.forEach((pg,pi)=>pg.exercises.forEach((ex,ei)=>ALL.push(Object.assign({ci,pi,ei,type:pg.type,instruction:pg.instruction,page:pg.page},ex)))));
 const BY_ID=Object.fromEntries(ALL.map(x=>[x.id,x]));
 const chapterExercises=ci=>ALL.filter(x=>x.ci===ci);
-const isFirstExerciseInChapter=ex=>chapterExercises(ex.ci)[0]?.id===ex.id;
+const isFirstExerciseInSubchapter=ex=>!!ex && ex.ei===0;
 function stat(list){
   let c=0,w=0; list.forEach(x=>{const r=rec(keyOf(x.id)); if(r?.s==='c')c++; else if(r?.s==='w')w++;});
   return {c,w,u:list.length-c-w,total:list.length,pct:list.length?Math.round(100*c/list.length):0};
@@ -478,7 +478,7 @@ function renderLibrary(){
   const s=stat(ALL);
   root.innerHTML=shell('<nav class="crumbs"><a href="#/home">'+esc(t('backHome'))+'</a><span class="sep">/</span><span>'+esc(t('myBooks'))+'</span></nav>'+
     '<div class="section-h"><h1>'+esc(t('myBooks'))+'</h1></div>'+
-    '<div class="wp-library"><article class="card wp-book-card"><div class="wp-cover"><div class="wp-cover-kicker">THE LEVEL SYSTEM</div><div class="wp-cover-title">WHITE<br>PAWN</div><div class="wp-cover-rule"></div><div class="wp-cover-level">'+esc(t('bookOriginal'))+'</div><div class="wp-cover-piece">'+pieceSVG('P')+'</div></div>'+
+    '<div class="wp-library"><article class="card wp-book-card"><div class="wp-cover wp-cover-image"><img src="'+BOOK_COVER+'" alt="Road to Masters — Level 1"></div>'+
     '<div class="wp-book-info"><span class="badge prog">'+esc(t('levelVolume'))+'</span><h2>White Pawn</h2><p>'+esc(bookDescription())+'</p><div class="wp-metrics"><b>300</b> '+esc(t('exercises'))+' · <b>10</b> '+esc(t('chapters'))+'</div>'+progressBar(s)+
     '<a class="btn mint" href="#/book/1">'+esc(s.c||s.w?t('continue'):t('openBook'))+'</a></div></article></div>');
   bindShell();
@@ -566,7 +566,7 @@ function renderExercise(id){
   root.innerHTML=shell('<nav class="crumbs"><a href="#/library">'+esc(t('myBooks'))+'</a><span class="sep">/</span><a href="#/book/1">White Pawn</a><span class="sep">/</span><a href="#/book/1/ch/'+ex.ci+'">'+esc(copy.title)+'</a></nav>'+
     '<div class="wp-play"><div class="wp-board-col"><div id="exerciseBoard">'+boardHtml(ex,true)+'</div><div class="wp-book-page">'+esc(t('page'))+' '+pg.page+' · '+esc(t('exercise'))+' '+String(ex.id).padStart(3,'0')+'</div></div>'+
     '<aside class="card wp-task"><div class="wp-task-top"><span class="count">'+esc(t('exercise'))+' '+String(ex.id).padStart(3,'0')+'</span><span class="badge">'+esc(bookLabel(ex.label||''))+'</span></div>'+
-    '<h2>'+esc(copy.title)+'</h2><p class="wp-instruction">'+esc(bookInstruction(ex.ci,ex.pi))+'</p>'+(isFirstExerciseInChapter(ex)?'<button type="button" class="tutorial-launch" id="openTutorial"><span class="playdot">▶</span>'+esc((TUTORIAL_COPY[lang]||TUTORIAL_COPY.en).button)+'</button>':'')+'<div class="wp-help" id="help"></div><div id="controls"></div><div id="feedback"></div>'+
+    '<h2>'+esc(copy.title)+'</h2><p class="wp-instruction">'+esc(bookInstruction(ex.ci,ex.pi))+'</p>'+(isFirstExerciseInSubchapter(ex)?'<button type="button" class="tutorial-launch" id="openTutorial"><span class="playdot">▶</span>'+esc((TUTORIAL_COPY[lang]||TUTORIAL_COPY.en).button)+'</button>':'')+'<div class="wp-help" id="help"></div><div id="controls"></div><div id="feedback"></div>'+
     '<div class="wp-task-actions"><button class="btn white sm" id="resetEx">'+esc(t('reset'))+'</button><button class="btn ghost sm" id="showAnswer">'+esc(t('show'))+'</button></div>'+
     '<p class="wp-source-note">'+esc(t('sourceNote'))+'</p><div class="wp-nav">'+(prev?'<a class="btn ghost sm" href="#/play/'+prev.id+'">‹ '+esc(t('previous'))+'</a>':'<span></span>')+
     (next?'<a class="btn ghost sm" href="#/play/'+next.id+'">'+esc(t('next'))+' ›</a>':'<a class="btn ghost sm" href="#/book/1/ch/'+ex.ci+'">'+esc(t('chapterOverview'))+'</a>')+'</div></aside></div>');
@@ -727,7 +727,7 @@ function renderExercise(id){
   $('#showAnswer').onclick=()=>{mark(keyOf(ex.id),'w');fb.innerHTML='<div class="wp-feedback info"><b>'+esc(t('answer'))+'</b><p>'+esc(localizeAnswer(ex.answer,ex))+'</p></div>';};
   help.textContent=(ex.type==='move'||ex.type==='moveguard')?t('selectMove'):ex.type==='select'?t('selectSquares'):'';
   paintBoard(); renderControls(); rebindDirect();
-  if(isFirstExerciseInChapter(ex) && !tutorialWasSeen(ex)) setTimeout(()=>openTutorial(ex),500);
+  
 }
 
 function render(){
