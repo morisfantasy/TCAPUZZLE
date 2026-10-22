@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 990" role="img" aria-label="Road to Masters, Level 1 book cover">
+<defs>
+  <pattern id="board" width="100" height="100" patternUnits="userSpaceOnUse">
+    <rect width="100" height="100" fill="#2d4b60"/>
+    <rect width="50" height="50" fill="#405c6c"/>
+    <rect x="50" y="50" width="50" height="50" fill="#405c6c"/>
+  </pattern>
+  <pattern id="checks" width="140" height="80" patternUnits="userSpaceOnUse">
+    <rect width="140" height="80" fill="#f4f0e4"/>
+    <rect width="70" height="40" fill="#081e30"/>
+    <rect x="70" y="40" width="70" height="40" fill="#081e30"/>
+  </pattern>
+  <clipPath id="boardClip"><polygon points="350,448 586,578 350,710 114,578"/></clipPath>
+  <clipPath id="boardClip2"><polygon points="350,514 544,621 350,728 156,621"/></clipPath>
+  <clipPath id="boardClip3"><polygon points="350,568 491,646 350,724 209,646"/></clipPath>
+</defs>
+<rect width="700" height="990" fill="#142b42"/>
+<!-- Academy mark -->
+<g fill="#f4f0e4">
+  <path d="M42 84 L58 67 L78 62 L96 69 L107 84 L124 87 L124 96 L108 98 L101 111 L105 125 L91 134 L68 134 L54 127 L57 112 L45 104 Z"/>
+  <path d="M58 67 L55 52 L72 57 L84 49 L97 58 L91 70 L78 72 Z"/>
+  <path d="M44 135 L112 135 L123 144 L33 144 Z"/>
+  <circle cx="84" cy="82" r="2.6" fill="#142b42"/>
+  <text x="123" y="65" font-family="Georgia,serif" font-size="14" font-weight="bold" letter-spacing="1">THE</text>
+  <text x="123" y="91" font-family="Georgia,serif" font-size="28" font-weight="bold">CHESS</text>
+  <text x="123" y="119" font-family="Georgia,serif" font-size="27" font-weight="bold">ACADEMY</text>
+  <path d="M123 126 H306" stroke="#f4f0e4" stroke-width="2"/>
+</g>
+<text x="622" y="44" text-anchor="middle" fill="#f4f0e4" font-family="Arial,sans-serif" font-size="14" letter-spacing="5">LEVEL</text>
+<text x="622" y="113" text-anchor="middle" fill="#e9c65d" font-family="Georgia,serif" font-size="86">1</text>
+<g fill="#f4f0e4" font-family="Georgia,'Times New Roman',serif" font-weight="normal">
+  <text x="42" y="218" font-size="70" letter-spacing="-1.5">ROAD TO</text>
+  <text x="42" y="291" font-size="70" letter-spacing="-1.5">MASTERS</text>
+</g>
+<!-- Lower steps of the chessboard -->
+<g>
+  <polygon points="350,448 586,578 586,625 350,757 114,625 114,578" fill="#385665"/>
+  <polygon points="350,710 586,578 586,625 350,757" fill="#203d51"/>
+  <polygon points="350,710 114,578 114,625 350,757" fill="#48616a"/>
+  <g clip-path="url(#boardClip)">
+    <g transform="translate(350 578) rotate(30) scale(1 .72)">
+      <rect x="-320" y="-320" width="640" height="640" fill="url(#board)"/>
+    </g>
+  </g>
+  <polygon points="350,514 544,621 544,660 350,770 156,660 156,621" fill="#344f60"/>
+  <polygon points="350,728 544,621 544,660 350,770" fill="#1f3a4e"/>
+  <polygon points="350,728 156,621 156,660 350,770" fill="#4a626a"/>
+  <g clip-path="url(#boardClip2)">
+    <g transform="translate(350 621) rotate(30) scale(1 .72)">
+      <rect x="-270" y="-270" width="540" height="540" fill="url(#board)"/>
+    </g>
+  </g>
+  <polygon points="350,568 491,646 491,674 350,753 209,674 209,646" fill="#385665"/>
+  <polygon points="350,724 491,646 491,674 350,753" fill="#203d51"/>
+  <polygon points="350,724 209,646 209,674 350,753" fill="#4a626a"/>
+  <g clip-path="url(#boardClip3)">
+    <g transform="translate(350 646) rotate(30) scale(1 .72)">
+      <rect x="-210" y="-210" width="420" height="420" fill="url(#board)"/>
+    </g>
+  </g>
+  <!-- Gold path climbing toward the pawn -->
+  <polygon points="235,674 281,648 329,675 282,702" fill="#e9c65d"/>
+  <polygon points="282,702 329,675 329,710 282,737" fill="#b59a49"/>
+  <polygon points="282,702 235,674 235,708 282,737" fill="#d8b650"/>
+  <polygon points="282,648 328,622 375,648 329,675" fill="#e9c65d"/>
+  <polygon points="329,675 375,648 375,678 329,705" fill="#b59a49"/>
+  <polygon points="329,675 282,648 282,678 329,705" fill="#d8b650"/>
+  <polygon points="329,622 366,601 406,623 368,645" fill="#e9c65d"/>
+  <polygon points="368,645 406,623 406,649 368,670" fill="#b59a49"/>
+  <polygon points="368,645 329,622 329,648 368,670" fill="#d8b650"/>
+  <polygon points="368,601 400,583 433,602 401,620" fill="#f4f0e4"/>
+  <polygon points="401,620 433,602 433,625 401,643" fill="#c7c9c0"/>
+  <polygon points="401,620 368,601 368,625 401,643" fill="#f4f0e4"/>
+</g>
+<!-- White pawn -->
+<ellipse cx="353" cy="659" rx="77" ry="18" fill="#0a1f30" opacity=".35"/>
+<path d="M292 636 C309 620 318 597 322 568 L327 530 C310 522 302 511 303 499 C304 477 324 462 349 462 C375 462 395 478 396 500 C397 513 389 524 371 531 L376 571 C381 598 391 620 412 637 C398 650 371 657 351 657 C329 657 305 650 292 636 Z" fill="#f4f0e4" stroke="#c8d0ce" stroke-width="3"/>
+<path d="M350 463 C366 475 376 487 376 502 C376 515 367 525 354 530 L358 568 C361 596 371 622 392 640 C380 647 366 651 352 652 Z" fill="#d9ded8"/>
+<ellipse cx="351" cy="501" rx="58" ry="12" fill="#f4f0e4" stroke="#c8d0ce" stroke-width="2"/>
+<path d="M291 636 Q351 659 412 637 L424 651 Q411 670 351 672 Q292 670 280 651 Z" fill="#f4f0e4" stroke="#c8d0ce" stroke-width="3"/>
+<!-- Checker band and footer -->
+<rect x="0" y="850" width="700" height="80" fill="url(#checks)"/>
+<path d="M0 930 H700" stroke="#476274" stroke-width="4"/>
+<rect x="0" y="934" width="700" height="56" fill="#e9c65d"/>
+<text x="44" y="970" fill="#142b42" font-family="Arial,sans-serif" font-size="16">GM Manuel Pena</text>
+<g stroke="#142b42" stroke-width="2" fill="none">
+  <rect x="462" y="951" width="17" height="17" fill="#142b42"/>
+  <rect x="488" y="951" width="17" height="17"/>
+  <rect x="514" y="951" width="17" height="17"/>
+  <rect x="540" y="951" width="17" height="17"/>
+  <rect x="566" y="951" width="17" height="17"/>
+  <rect x="592" y="951" width="17" height="17"/>
+  <rect x="618" y="951" width="17" height="17"/>
+  <rect x="644" y="951" width="17" height="17"/>
+</g>
+</svg>
