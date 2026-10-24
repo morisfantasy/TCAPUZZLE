@@ -24,13 +24,15 @@ if (check.__book.ch.length !== 10 || ids.length !== 300 || ids.some((id, i) => i
 
 const data = bookData +
   '\nconst PIECES=' + JSON.stringify(pieces) + ';\nconst LOGO="' + logo + '";\nconst BOOK_COVER="' + bookCover + '";';
+const analysisBoardCode = fs.readFileSync(src('analysis_board.js'), 'utf8');
 const appCode = fs.readFileSync(src('workbook_app.js'), 'utf8');
+const combinedAppCode = appCode.replace("'use strict';", "'use strict';\n" + analysisBoardCode);
 // Fail the build immediately if the browser application contains a syntax error.
-new Function(appCode);
+new Function(combinedAppCode);
 const html = fs.readFileSync(src('template.html'), 'utf8')
   .replace('/*MINICHESS*/', () => fs.readFileSync(src('minichess.js'), 'utf8'))
   .replace('/*DATA*/', () => data)
-  .replace('/*APP*/', () => appCode);
+  .replace('/*APP*/', () => combinedAppCode);
 fs.mkdirSync(path.join(__dirname, 'public'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, 'public', 'index.html'), html);
 console.log('public/index.html built (' + Math.round(html.length / 1024) + ' KB)');

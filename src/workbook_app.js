@@ -468,10 +468,13 @@ function renderAuth(mode){
   };
 }
 function renderHome(){
-  root.innerHTML=shell('<section class="hub-head"><h1>'+esc(t('choose'))+'</h1><p>'+esc(t('chooseSub'))+'</p></section>'+
+  const admin=!!Auth.current()?.isAdmin;
+  const analysis=admin?analysisBoardMarkup():'';
+  root.innerHTML=shell(analysis+'<section class="hub-head"><h1>'+esc(t('choose'))+'</h1><p>'+esc(t('chooseSub'))+'</p></section>'+
   '<div class="hub-grid"><a class="card hub-card books" href="#/library"><span class="eyebrow">'+esc(t('booksEyebrow'))+'</span><h2>'+esc(t('books'))+'</h2><p>'+esc(t('booksDesc'))+'</p><span class="soon-pill">'+esc(t('openBooks'))+'</span><span class="hub-icon">♟️</span></a>'+
   '<a class="card hub-card courses" href="#/courses"><span class="eyebrow">'+esc(t('coursesEyebrow'))+'</span><h2>'+esc(t('courses'))+'</h2><p>'+esc(t('coursesDesc'))+'</p><span class="soon-pill">'+esc(t('soon'))+'</span><span class="hub-icon">▶️</span></a></div>');
   bindShell();
+  if(admin) bindAnalysisBoard();
 }
 function renderCourses(){
   root.innerHTML=shell('<nav class="crumbs"><a href="#/home">'+esc(t('backHome'))+'</a><span class="sep">/</span><span>'+esc(t('courses'))+'</span></nav>'+

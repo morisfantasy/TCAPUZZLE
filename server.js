@@ -82,6 +82,11 @@ async function currentUser(req) {
   );
   return r.rows[0] || null;
 }
+
+function isAdminUsername(username) {
+  const configured = (process.env.TCA_ADMIN_USERNAMES || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+  return configured.includes(String(username || '').trim().toLowerCase());
+}
 async function createSession(res, userId) {
   const token = crypto.randomBytes(32).toString('hex');
   const expires = new Date(Date.now() + SESSION_DAYS * 86400000);
@@ -93,7 +98,7 @@ async function handleApi(req, res, pathname) {
     if (req.method === 'GET' && pathname === '/api/me') {
       const u = await currentUser(req);
       if (!u) return json(res, 401, { error: 'Not signed in' });
-      return json(res, 200, { user: { name: u.name, username: u.username, key: u.username } });
+      return json(res, 200, { user: { name: u.name, username: u.username, key: u.username, isAdmin: isAdminUsername(u.username) } });
     }
     if (req.method === 'POST' && pathname === '/api/register') {
       const { name = '', username = '', password = '' } = await readJson(req);
@@ -112,7 +117,7 @@ async function handleApi(req, res, pathname) {
         throw e;
       }
       const cookie = await createSession(res, row.id);
-      return json(res, 201, { user: { name: row.name, username: row.username, key: row.username } }, { 'Set-Cookie': cookie });
+      return json(res, 201, { user: { name: row.name, username: row.username, key: row.username, isAdmin: isAdminUsername(row.username) } }, { 'Set-Cookie': cookie });
     }
     if (req.method === 'POST' && pathname === '/api/login') {
       const { username = '', password = '' } = await readJson(req);
@@ -122,7 +127,7 @@ async function handleApi(req, res, pathname) {
         return json(res, 401, { error: 'Username or password is not right. Check them and try again.' });
       }
       const cookie = await createSession(res, row.id);
-      return json(res, 200, { user: { name: row.name, username: row.username, key: row.username } }, { 'Set-Cookie': cookie });
+      return json(res, 200, { user: { name: row.name, username: row.username, key: row.username, isAdmin: isAdminUsername(row.username) } }, { 'Set-Cookie': cookie });
     }
     if (req.method === 'POST' && pathname === '/api/logout') {
       const token = parseCookies(req).tca_session;
