@@ -1,7 +1,7 @@
 // Admin analysis board for coaches. Injected into workbook_app.js by build.js.
 const ANALYSIS_START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const AnalysisBoard = {
-  startFen: ANALYSIS_START_FEN, moves: [], currentPly: 0,
+  startFen: ANALYSIS_START_FEN, moves: [], redoMoves: [], currentPly: 0,
   chapters: [{ title: 'Free analysis', startFen: ANALYSIS_START_FEN, moves: [] }],
   chapterIndex: 0, flipped: false, selected: null, legal: [], annotations: [],
   dragFrom: null, rightStart: null, suppressClickUntil: 0, error: '',
@@ -103,7 +103,7 @@ function analysisPlayMove(from,to) {
   let promotion='q';
   if(legal.some(m=>m.promotion)){const answer=window.prompt('Promote to: q (queen), r (rook), b (bishop), or n (knight)','q');if(answer===null)return false;promotion=String(answer).trim().toLowerCase();if(!['q','r','b','n'].includes(promotion))promotion='q';}
   const move=game.move({from,to,promotion});if(!move)return false;
-  AnalysisBoard.moves=AnalysisBoard.moves.slice(0,AnalysisBoard.currentPly);AnalysisBoard.moves.push(move.san);AnalysisBoard.currentPly=AnalysisBoard.moves.length;
+  AnalysisBoard.moves=AnalysisBoard.moves.slice(0,AnalysisBoard.currentPly);AnalysisBoard.redoMoves=[];AnalysisBoard.moves.push(move.san);AnalysisBoard.currentPly=AnalysisBoard.moves.length;
   AnalysisBoard.selected=null;AnalysisBoard.legal=[];AnalysisBoard.annotations=[];AnalysisBoard.error='';AnalysisBoard.info=move.san;analysisRenderBoard();return true;
 }
 function analysisSelectSquare(sq) {
@@ -147,7 +147,7 @@ function analysisImportPgn(text) {
     chapters.push({title,startFen:headers.FEN||ANALYSIS_START_FEN,moves:game.history()});
   });
   if(!chapters.length)throw new Error('No games or chapters were found in that PGN.');
-  AnalysisBoard.chapters=chapters;analysisLoadChapter(0);
+  AnalysisBoard.chapters=chapters;AnalysisBoard.redoMoves=[];analysisLoadChapter(0);
   $('#analysisChapter').innerHTML=chapters.map((c,i)=>'<option value="'+i+'">'+esc((i+1)+'. '+c.title)+'</option>').join('');
   $('#analysisChapter').value='0';$('#analysisImportMessage').textContent='Imported '+chapters.length+(chapters.length===1?' game.':' chapters.');
 }
@@ -177,10 +177,10 @@ function analysisBindBoard() {
   board.addEventListener('pointerup',e=>{if(e.button===2)e.preventDefault();});
   $('#analysisStart').onclick=()=>analysisSetPosition(0);$('#analysisPrev').onclick=()=>analysisSetPosition(AnalysisBoard.currentPly-1);
   $('#analysisNext').onclick=()=>analysisSetPosition(AnalysisBoard.currentPly+1);$('#analysisEnd').onclick=()=>analysisSetPosition(AnalysisBoard.moves.length);
-  $('#analysisUndo').onclick=()=>{if(AnalysisBoard.currentPly>0){AnalysisBoard.moves=AnalysisBoard.moves.slice(0,AnalysisBoard.currentPly-1);AnalysisBoard.currentPly--;AnalysisBoard.annotations=[];AnalysisBoard.selected=null;AnalysisBoard.legal=[];analysisRenderBoard();}};
-  $('#analysisRedo').onclick=()=>analysisSetPosition(AnalysisBoard.currentPly+1);
+  $('#analysisUndo').onclick=()=>{if(AnalysisBoard.currentPly>0){AnalysisBoard.redoMoves=AnalysisBoard.moves.slice(AnalysisBoard.currentPly-1).concat(AnalysisBoard.redoMoves);AnalysisBoard.moves=AnalysisBoard.moves.slice(0,AnalysisBoard.currentPly-1);AnalysisBoard.currentPly--;AnalysisBoard.annotations=[];AnalysisBoard.selected=null;AnalysisBoard.legal=[];analysisRenderBoard();}};
+  $('#analysisRedo').onclick=()=>{if(AnalysisBoard.redoMoves.length){AnalysisBoard.moves.push(AnalysisBoard.redoMoves.shift());AnalysisBoard.currentPly=AnalysisBoard.moves.length;analysisRenderBoard();}};
   $('#analysisFlip').onclick=()=>{AnalysisBoard.flipped=!AnalysisBoard.flipped;analysisRenderBoard();};
-  $('#analysisReset').onclick=()=>{AnalysisBoard.startFen=ANALYSIS_START_FEN;AnalysisBoard.moves=[];AnalysisBoard.currentPly=0;AnalysisBoard.chapters=[{title:'Free analysis',startFen:ANALYSIS_START_FEN,moves:[]}];AnalysisBoard.chapterIndex=0;AnalysisBoard.annotations=[];AnalysisBoard.selected=null;AnalysisBoard.legal=[];AnalysisBoard.error='';AnalysisBoard.info='Board reset.';
+  $('#analysisReset').onclick=()=>{AnalysisBoard.startFen=ANALYSIS_START_FEN;AnalysisBoard.moves=[];AnalysisBoard.redoMoves=[];AnalysisBoard.currentPly=0;AnalysisBoard.chapters=[{title:'Free analysis',startFen:ANALYSIS_START_FEN,moves:[]}];AnalysisBoard.chapterIndex=0;AnalysisBoard.annotations=[];AnalysisBoard.selected=null;AnalysisBoard.legal=[];AnalysisBoard.error='';AnalysisBoard.info='Board reset.';
     $('#analysisChapter').innerHTML='<option value="0">1. Free analysis</option>';$('#analysisImportMessage').textContent='';analysisRenderBoard();};
   $('#analysisChapter').onchange=e=>analysisLoadChapter(Number(e.target.value));
   $('#analysisPgnFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{$('#analysisPgnText').value=await f.text();$('#analysisImportMessage').textContent='File loaded. Press Import PGN.';}catch{$('#analysisImportMessage').textContent='Could not read this file.';}};
