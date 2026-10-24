@@ -425,9 +425,11 @@ function stat(list){
 
 function shell(inner){
   const u=Auth.current();
+  const analysisNav=u?.isAdmin?'<a href="#/analysis" class="analysis-nav-link '+(location.hash.replace(/^#\/?/,'').split('/')[0]==='analysis'?'active':'')+'"><span aria-hidden="true">♟</span><span>Analysis board</span></a>':'';
+  const centerNav=u?.isAdmin?'<span class="analysis-nav-spacer"></span>'+analysisNav+'<span class="analysis-nav-spacer"></span>':'<span class="spacer"></span>';
   return '<header class="topbar"><div class="topbar-in">'+
     '<a href="#/home" class="logo-sticker"><img src="'+LOGO+'" alt="The Chess Academy"></a>'+
-    '<span class="prod">'+esc(t('trainer'))+'</span><span class="spacer"></span>'+langSelect()+
+    '<span class="prod">'+esc(t('trainer'))+'</span>'+centerNav+langSelect()+
     '<div class="user-pill"><span class="avatar">'+esc((u?.name||'?')[0].toUpperCase())+'</span><span class="nm">'+esc(u?.name||'')+'</span><button class="btn white" id="logout">'+esc(t('logout'))+'</button></div>'+
     '</div></header><div class="checker"></div><main class="wrap">'+inner+'</main>';
 }
@@ -506,16 +508,19 @@ function bindSuperadminUsers(){
   };
 }
 function renderHome(){
-  const admin=!!Auth.current()?.isAdmin;
   const superadmin=!!Auth.current()?.isSuperadmin;
-  const analysis=admin?analysisBoardMarkup():'';
   const users=superadmin?superadminUsersMarkup():'';
-  root.innerHTML=shell(users+analysis+'<section class="hub-head"><h1>'+esc(t('choose'))+'</h1><p>'+esc(t('chooseSub'))+'</p></section>'+
+  root.innerHTML=shell(users+'<section class="hub-head"><h1>'+esc(t('choose'))+'</h1><p>'+esc(t('chooseSub'))+'</p></section>'+
   '<div class="hub-grid"><a class="card hub-card books" href="#/library"><span class="eyebrow">'+esc(t('booksEyebrow'))+'</span><h2>'+esc(t('books'))+'</h2><p>'+esc(t('booksDesc'))+'</p><span class="soon-pill">'+esc(t('openBooks'))+'</span><span class="hub-icon">♟️</span></a>'+
   '<a class="card hub-card courses" href="#/courses"><span class="eyebrow">'+esc(t('coursesEyebrow'))+'</span><h2>'+esc(t('courses'))+'</h2><p>'+esc(t('coursesDesc'))+'</p><span class="soon-pill">'+esc(t('soon'))+'</span><span class="hub-icon">▶️</span></a></div>');
   bindShell();
-  if(admin) bindAnalysisBoard();
   if(superadmin) bindSuperadminUsers();
+}
+function renderAnalysis(){
+  if(!Auth.current()?.isAdmin){go('#/home');return;}
+  root.innerHTML=shell(analysisBoardMarkup());
+  bindShell();
+  bindAnalysisBoard();
 }
 function renderCourses(){
   root.innerHTML=shell('<nav class="crumbs"><a href="#/home">'+esc(t('backHome'))+'</a><span class="sep">/</span><span>'+esc(t('courses'))+'</span></nav>'+
@@ -783,6 +788,7 @@ function render(){
   if(!Auth.current()){ renderAuth(parts[0]==='signup'?'signup':'login'); return; }
   if(!parts[0]||parts[0]==='home')renderHome();
   else if(parts[0]==='courses')renderCourses();
+  else if(parts[0]==='analysis')renderAnalysis();
   else if(parts[0]==='library')renderLibrary();
   else if(parts[0]==='book'&&parts[2]==='ch')renderChapter(+parts[3]);
   else if(parts[0]==='book')renderBook();
