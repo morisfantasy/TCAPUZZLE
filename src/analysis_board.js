@@ -3,25 +3,41 @@ const ANALYSIS_START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -
 const AnalysisBoard = {
   startFen: ANALYSIS_START_FEN, moves: [], redoMoves: [], currentPly: 0,
   chapters: [{ title: 'Free analysis', startFen: ANALYSIS_START_FEN, moves: [] }],
-  chapterIndex: 0, flipped: false, selected: null, legal: [], annotations: [],
+  chapterIndex: 0, flipped: false, selected: null, legal: [], annotations: [], uiBound: false,
   dragFrom: null, rightStart: null, suppressClickUntil: 0, error: '',
   info: '', bound: false, globalBound: false
 };
 function analysisBoardMarkup() {
-  return '<section class="analysis-workspace card" id="analysisWorkspace">' +
-    '<div class="analysis-heading"><div><span class="analysis-eyebrow">COACH WORKSPACE</span><h2>Analysis board</h2><p>Explore positions, prepare lessons and annotate ideas.</p></div><span class="analysis-admin-pill">ADMIN</span></div>' +
+  return '<section class="analysis-page" id="analysisPage">' +
     '<div class="analysis-layout"><div class="analysis-board-column">' +
-      '<div class="analysis-toolbar"><button class="btn white" id="analysisStart" title="Go to start">|◀</button><button class="btn white" id="analysisPrev" title="Previous move">‹</button><button class="btn white" id="analysisNext" title="Next move">›</button><button class="btn white" id="analysisEnd" title="Go to end">▶|</button><span class="analysis-ply" id="analysisPly">Start position</span><span class="analysis-toolbar-spacer"></span><button class="btn white" id="analysisUndo">Undo</button><button class="btn white" id="analysisRedo">Redo</button><button class="btn white" id="analysisFlip">Flip</button><button class="btn white" id="analysisReset">Reset</button></div>' +
       '<div class="analysis-board-wrap"><div class="analysis-board" id="analysisBoard" aria-label="Interactive chess analysis board"></div></div>' +
-      '<div class="analysis-board-note">Left-click or drag pieces to move. Right-click a square to circle it; right-drag to draw an arrow. Shift + right-click draws in red.</div><div class="analysis-status" id="analysisStatus" role="status"></div>' +
-      '<div class="analysis-move-list-wrap"><div class="analysis-section-title">Moves</div><div class="analysis-move-list" id="analysisMoveList"></div></div>' +
-    '</div><aside class="analysis-side">' +
-      '<div class="analysis-side-card"><div class="analysis-section-title">PGN study or game</div><p class="analysis-help">Upload a .pgn file or paste PGN below. Multi-game PGNs are shown as chapters; variations are simplified to the main line.</p>' +
+      '<div class="analysis-board-toolbar" aria-label="Board controls">' +
+        '<button class="analysis-icon-btn" id="analysisStart" title="Go to start" aria-label="Go to start">|◀</button>' +
+        '<button class="analysis-icon-btn" id="analysisPrev" title="Previous move" aria-label="Previous move">‹</button>' +
+        '<button class="analysis-icon-btn" id="analysisNext" title="Next move" aria-label="Next move">›</button>' +
+        '<button class="analysis-icon-btn" id="analysisEnd" title="Go to end" aria-label="Go to end">▶|</button>' +
+        '<span class="analysis-control-divider"></span>' +
+        '<button class="analysis-icon-btn" id="analysisFlip" title="Flip board" aria-label="Flip board">⇅</button>' +
+        '<span class="analysis-ply" id="analysisPly">Start position</span>' +
+      '</div><div class="analysis-status" id="analysisStatus" role="status"></div>' +
+    '</div><aside class="analysis-side"><div class="analysis-moves-panel">' +
+      '<div class="analysis-moves-head"><h2>Moves</h2><div class="analysis-moves-actions">' +
+        '<button class="analysis-icon-btn" id="analysisOpenImport" title="Import PGN" aria-label="Import PGN">↥</button>' +
+        '<button class="analysis-icon-btn" id="analysisMoreButton" title="More tools" aria-label="More tools" aria-expanded="false">⋯</button>' +
+      '</div></div>' +
+      '<div class="analysis-more-menu" id="analysisMoreMenu" hidden>' +
+        '<button type="button" id="analysisCopyFen">Copy FEN</button><button type="button" id="analysisExportPgn">Export PGN</button><button type="button" id="analysisClearMarks">Clear arrows and circles</button>' +
+      '</div>' +
+      '<div class="analysis-chapter-select" id="analysisChapterWrap" hidden><label for="analysisChapter">Chapter</label><select id="analysisChapter" aria-label="Select PGN chapter"></select></div>' +
+      '<div class="analysis-chapter-meta" id="analysisChapterMeta"></div><div class="analysis-move-list" id="analysisMoveList"></div>' +
+    '</div></aside></div>' +
+    '<div class="analysis-import-modal" id="analysisImportModal" hidden><div class="analysis-import-backdrop" data-close-analysis-import></div><section class="analysis-import-dialog" role="dialog" aria-modal="true" aria-labelledby="analysisImportTitle">' +
+      '<div class="analysis-import-dialog-head"><div><span class="analysis-eyebrow">THE CHESS ACADEMY</span><h2 id="analysisImportTitle">Import PGN</h2><p>Load a game or a study with multiple chapters.</p></div><button type="button" class="analysis-icon-btn" id="analysisCloseImport" aria-label="Close import dialog">×</button></div>' +
       '<label class="analysis-file-label" for="analysisPgnFile">Choose PGN file</label><input id="analysisPgnFile" type="file" accept=".pgn,.txt,text/plain,application/x-chess-pgn">' +
-      '<textarea id="analysisPgnText" rows="8" spellcheck="false" placeholder="[Event &quot;Training game&quot;]&#10;[White &quot;White&quot;]&#10;[Black &quot;Black&quot;]&#10;&#10;1. e4 e5 2. Nf3 Nc6"></textarea><button class="btn mint block" id="analysisImport">Import PGN</button><div class="analysis-message" id="analysisImportMessage" aria-live="polite"></div></div>' +
-      '<div class="analysis-side-card"><div class="analysis-section-title">Chapters</div><select id="analysisChapter" aria-label="Select PGN chapter"></select><div class="analysis-chapter-meta" id="analysisChapterMeta"></div></div>' +
-      '<div class="analysis-side-card"><div class="analysis-section-title">Position tools</div><div class="analysis-tool-grid"><button class="btn white" id="analysisCopyFen">Copy FEN</button><button class="btn white" id="analysisExportPgn">Export PGN</button><button class="btn white" id="analysisClearMarks">Clear arrows</button></div><p class="analysis-help">No engine is running. Designed for free analysis and teaching.</p></div>' +
-    '</aside></div></section>';
+      '<label class="analysis-file-label" for="analysisPgnText">Or paste PGN</label><textarea id="analysisPgnText" rows="9" spellcheck="false" placeholder="[Event &quot;Training game&quot;]&#10;[White &quot;White&quot;]&#10;[Black &quot;Black&quot;]&#10;&#10;1. e4 e5 2. Nf3 Nc6"></textarea>' +
+      '<div class="analysis-import-dialog-footer"><div class="analysis-message" id="analysisImportMessage" aria-live="polite"></div><button class="btn mint" id="analysisImport">Import PGN</button></div>' +
+    '</section></div><div class="analysis-move-context" id="analysisMoveContextMenu" hidden><button type="button" id="analysisDeleteFromHere">Delete from here</button></div>' +
+    '</section>';
 }
 function analysisGameAt(ply) {
   if (!window.Chess) throw new Error('The chess rules library did not load. Refresh and try again.');
@@ -104,6 +120,7 @@ function analysisPlayMove(from,to) {
   if(legal.some(m=>m.promotion)){const answer=window.prompt('Promote to: q (queen), r (rook), b (bishop), or n (knight)','q');if(answer===null)return false;promotion=String(answer).trim().toLowerCase();if(!['q','r','b','n'].includes(promotion))promotion='q';}
   const move=game.move({from,to,promotion});if(!move)return false;
   AnalysisBoard.moves=AnalysisBoard.moves.slice(0,AnalysisBoard.currentPly);AnalysisBoard.redoMoves=[];AnalysisBoard.moves.push(move.san);AnalysisBoard.currentPly=AnalysisBoard.moves.length;
+  if(AnalysisBoard.chapters[AnalysisBoard.chapterIndex])AnalysisBoard.chapters[AnalysisBoard.chapterIndex].moves=AnalysisBoard.moves.slice();
   AnalysisBoard.selected=null;AnalysisBoard.legal=[];AnalysisBoard.annotations=[];AnalysisBoard.error='';AnalysisBoard.info=move.san;analysisRenderBoard();return true;
 }
 function analysisSelectSquare(sq) {
@@ -149,12 +166,17 @@ function analysisImportPgn(text) {
   if(!chapters.length)throw new Error('No games or chapters were found in that PGN.');
   AnalysisBoard.chapters=chapters;AnalysisBoard.redoMoves=[];analysisLoadChapter(0);
   $('#analysisChapter').innerHTML=chapters.map((c,i)=>'<option value="'+i+'">'+esc((i+1)+'. '+c.title)+'</option>').join('');
+  $('#analysisChapterWrap').hidden=chapters.length<2;
   $('#analysisChapter').value='0';$('#analysisImportMessage').textContent='Imported '+chapters.length+(chapters.length===1?' game.':' chapters.');
+  $('#analysisImportModal').hidden=true;
 }
 function analysisLoadChapter(i) {
   const ch=AnalysisBoard.chapters[i];if(!ch)return;
   AnalysisBoard.chapterIndex=i;AnalysisBoard.startFen=ch.startFen||ANALYSIS_START_FEN;AnalysisBoard.moves=ch.moves.slice();AnalysisBoard.currentPly=0;
-  AnalysisBoard.selected=null;AnalysisBoard.legal=[];AnalysisBoard.annotations=[];AnalysisBoard.error='';AnalysisBoard.info='Loaded: '+ch.title;analysisRenderBoard();
+  AnalysisBoard.selected=null;AnalysisBoard.legal=[];AnalysisBoard.annotations=[];AnalysisBoard.error='';AnalysisBoard.info='';
+  const selector=$('#analysisChapter');if(selector)selector.value=String(i);
+  const wrap=$('#analysisChapterWrap');if(wrap)wrap.hidden=AnalysisBoard.chapters.length<2;
+  analysisRenderBoard();
 }
 function analysisBindBoard() {
   const board=$('#analysisBoard');if(!board)return;
@@ -167,27 +189,56 @@ function analysisBindBoard() {
     if(e.button===0){let g=analysisGameAt(AnalysisBoard.currentPly);const p=g.get(sq.dataset.square);if(p&&p.color===g.turn())AnalysisBoard.dragFrom=sq.dataset.square;}
   });
   const globalUp=e=>{
-    if(AnalysisBoard.rightStart){const from=AnalysisBoard.rightStart.square,target=document.elementFromPoint(e.clientX,e.clientY),toEl=target&&target.closest?target.closest('[data-square]'):null,to=toEl?toEl.dataset.square:from,color=AnalysisBoard.rightStart.red?'#e64a3b':'#22a06b';
+    if(AnalysisBoard.rightStart){const from=AnalysisBoard.rightStart.square,target=document.elementFromPoint(e.clientX,e.clientY),toEl=target&&target.closest?target.closest('[data-square]'):null,to=toEl?toEl.dataset.square:from,color=AnalysisBoard.rightStart.red?'#d84b45':'#22a06b';
       const idx=AnalysisBoard.annotations.findIndex(a=>a.from===from&&a.to===to&&a.color===color);if(idx>=0)AnalysisBoard.annotations.splice(idx,1);else AnalysisBoard.annotations.push({from,to,color});
       AnalysisBoard.rightStart=null;analysisRenderBoard();}
     if(AnalysisBoard.dragFrom){const from=AnalysisBoard.dragFrom,target=document.elementFromPoint(e.clientX,e.clientY),toEl=target&&target.closest?target.closest('[data-square]'):null,to=toEl?toEl.dataset.square:null;AnalysisBoard.dragFrom=null;
       if(to&&to!==from&&analysisPlayMove(from,to))AnalysisBoard.suppressClickUntil=Date.now()+250;}
   };
   if(!AnalysisBoard.globalBound){document.addEventListener('pointerup',globalUp);AnalysisBoard.globalBound=true;}
+  if(!AnalysisBoard.uiBound){
+    document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const modal=$('#analysisImportModal'),context=$('#analysisMoveContextMenu');if(modal&&!modal.hidden)modal.hidden=true;if(context)context.hidden=true;});
+    document.addEventListener('click',e=>{const context=$('#analysisMoveContextMenu');if(context&&!e.target.closest('#analysisMoveContextMenu')&&!e.target.closest('#analysisMoveList'))context.hidden=true;});
+    AnalysisBoard.uiBound=true;
+  }
   board.addEventListener('pointerup',e=>{if(e.button===2)e.preventDefault();});
-  $('#analysisStart').onclick=()=>analysisSetPosition(0);$('#analysisPrev').onclick=()=>analysisSetPosition(AnalysisBoard.currentPly-1);
-  $('#analysisNext').onclick=()=>analysisSetPosition(AnalysisBoard.currentPly+1);$('#analysisEnd').onclick=()=>analysisSetPosition(AnalysisBoard.moves.length);
-  $('#analysisUndo').onclick=()=>{if(AnalysisBoard.currentPly>0){AnalysisBoard.redoMoves=AnalysisBoard.moves.slice(AnalysisBoard.currentPly-1).concat(AnalysisBoard.redoMoves);AnalysisBoard.moves=AnalysisBoard.moves.slice(0,AnalysisBoard.currentPly-1);AnalysisBoard.currentPly--;AnalysisBoard.annotations=[];AnalysisBoard.selected=null;AnalysisBoard.legal=[];analysisRenderBoard();}};
-  $('#analysisRedo').onclick=()=>{if(AnalysisBoard.redoMoves.length){AnalysisBoard.moves.push(AnalysisBoard.redoMoves.shift());AnalysisBoard.currentPly=AnalysisBoard.moves.length;analysisRenderBoard();}};
+  $('#analysisStart').onclick=()=>analysisSetPosition(0);
+  $('#analysisPrev').onclick=()=>analysisSetPosition(AnalysisBoard.currentPly-1);
+  $('#analysisNext').onclick=()=>analysisSetPosition(AnalysisBoard.currentPly+1);
+  $('#analysisEnd').onclick=()=>analysisSetPosition(AnalysisBoard.moves.length);
   $('#analysisFlip').onclick=()=>{AnalysisBoard.flipped=!AnalysisBoard.flipped;analysisRenderBoard();};
-  $('#analysisReset').onclick=()=>{AnalysisBoard.startFen=ANALYSIS_START_FEN;AnalysisBoard.moves=[];AnalysisBoard.redoMoves=[];AnalysisBoard.currentPly=0;AnalysisBoard.chapters=[{title:'Free analysis',startFen:ANALYSIS_START_FEN,moves:[]}];AnalysisBoard.chapterIndex=0;AnalysisBoard.annotations=[];AnalysisBoard.selected=null;AnalysisBoard.legal=[];AnalysisBoard.error='';AnalysisBoard.info='Board reset.';
-    $('#analysisChapter').innerHTML='<option value="0">1. Free analysis</option>';$('#analysisImportMessage').textContent='';analysisRenderBoard();};
+  const modal=$('#analysisImportModal'),input=$('#analysisPgnText'),file=$('#analysisPgnFile');
+  const openImport=()=>{modal.hidden=false;$('#analysisMoreMenu').hidden=true;$('#analysisMoreButton').setAttribute('aria-expanded','false');input.focus();};
+  const closeImport=()=>{modal.hidden=true;};
+  $('#analysisOpenImport').onclick=openImport;
+  $('#analysisCloseImport').onclick=closeImport;
+  $$('[data-close-analysis-import]').forEach(x=>x.onclick=closeImport);
+  file.onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{input.value=await f.text();$('#analysisImportMessage').textContent='File loaded. Press Import PGN.';}catch{$('#analysisImportMessage').textContent='Could not read this file.';}};
+  $('#analysisImport').onclick=()=>{try{analysisImportPgn(input.value);AnalysisBoard.error='';}catch(e){$('#analysisImportMessage').textContent=e.message;}};
   $('#analysisChapter').onchange=e=>analysisLoadChapter(Number(e.target.value));
-  $('#analysisPgnFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{$('#analysisPgnText').value=await f.text();$('#analysisImportMessage').textContent='File loaded. Press Import PGN.';}catch{$('#analysisImportMessage').textContent='Could not read this file.';}};
-  $('#analysisImport').onclick=()=>{try{analysisImportPgn($('#analysisPgnText').value);AnalysisBoard.error='';}catch(e){$('#analysisImportMessage').textContent=e.message;}};
-  $('#analysisCopyFen').onclick=async()=>{try{await navigator.clipboard.writeText(analysisGameAt(AnalysisBoard.currentPly).fen());$('#analysisStatus').textContent='FEN copied.';}catch{$('#analysisStatus').textContent='Could not copy FEN. Your browser may block clipboard access.';}};
-  $('#analysisExportPgn').onclick=()=>{try{const g=analysisGameAt(AnalysisBoard.moves.length),blob=new Blob([g.pgn({max_width:80,newline_char:'\n'})],{type:'application/x-chess-pgn;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='tca-analysis.pgn';a.click();URL.revokeObjectURL(url);}catch(e){$('#analysisStatus').textContent=e.message;}};
-  $('#analysisClearMarks').onclick=()=>{AnalysisBoard.annotations=[];analysisRenderBoard();};
+  $('#analysisMoreButton').onclick=()=>{const menu=$('#analysisMoreMenu'),open=menu.hidden;menu.hidden=!open;$('#analysisMoreButton').setAttribute('aria-expanded',String(open));};
+  $('#analysisCopyFen').onclick=async()=>{try{await navigator.clipboard.writeText(analysisGameAt(AnalysisBoard.currentPly).fen());AnalysisBoard.info='FEN copied.';analysisRenderBoard();$('#analysisMoreMenu').hidden=true;}catch{$('#analysisStatus').textContent='Could not copy FEN. Your browser may block clipboard access.';}};
+  $('#analysisExportPgn').onclick=()=>{try{const g=analysisGameAt(AnalysisBoard.moves.length),blob=new Blob([g.pgn({max_width:80,newline_char:'\\n'})],{type:'application/x-chess-pgn;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='tca-analysis.pgn';a.click();URL.revokeObjectURL(url);$('#analysisMoreMenu').hidden=true;}catch(e){$('#analysisStatus').textContent=e.message;}};
+  $('#analysisClearMarks').onclick=()=>{AnalysisBoard.annotations=[];analysisRenderBoard();$('#analysisMoreMenu').hidden=true;};
+  const context=$('#analysisMoveContextMenu');let deletePly=null;
+  $('#analysisMoveList').addEventListener('contextmenu',e=>{
+    const move=e.target.closest('[data-ply]');if(!move)return;
+    e.preventDefault();deletePly=Number(move.dataset.ply);
+    context.style.left=Math.min(e.clientX,window.innerWidth-190)+'px';
+    context.style.top=Math.min(e.clientY,window.innerHeight-70)+'px';
+    context.hidden=false;
+  });
+  $('#analysisMoveList').addEventListener('click',e=>{if(!e.target.closest('[data-ply]'))context.hidden=true;});
+  $('#analysisDeleteFromHere').onclick=()=>{
+    if(deletePly===null)return;
+    const cut=Math.max(0,deletePly-1);
+    AnalysisBoard.moves=AnalysisBoard.moves.slice(0,cut);
+    AnalysisBoard.currentPly=Math.min(AnalysisBoard.currentPly,AnalysisBoard.moves.length);
+    AnalysisBoard.redoMoves=[];
+    if(AnalysisBoard.chapters[AnalysisBoard.chapterIndex])AnalysisBoard.chapters[AnalysisBoard.chapterIndex].moves=AnalysisBoard.moves.slice();
+    AnalysisBoard.selected=null;AnalysisBoard.legal=[];AnalysisBoard.annotations=[];AnalysisBoard.error='';AnalysisBoard.info='Continuation deleted.';
+    context.hidden=true;deletePly=null;analysisRenderBoard();
+  };
   analysisRenderBoard();
 }
 function bindAnalysisBoard(){analysisBindBoard();}
