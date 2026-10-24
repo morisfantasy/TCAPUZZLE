@@ -26,7 +26,7 @@ const data = bookData +
   '\nconst PIECES=' + JSON.stringify(pieces) + ';\nconst LOGO="' + logo + '";\nconst BOOK_COVER="' + bookCover + '";';
 const analysisBoardCode = fs.readFileSync(src('analysis_board.js'), 'utf8');
 const appCode = fs.readFileSync(src('workbook_app.js'), 'utf8');
-const combinedAppCode = analysisBoardCode + '\\n' + appCode;
+const combinedAppCode = appCode.replace("'use strict';", "'use strict';\\n" + analysisBoardCode);
 // Fail the build immediately if the browser application contains a syntax error.
 new Function(combinedAppCode);
 const html = fs.readFileSync(src('template.html'), 'utf8')
