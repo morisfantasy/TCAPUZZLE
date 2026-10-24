@@ -5,7 +5,7 @@ const AnalysisBoard = {
   chapters: [{ title: 'Free analysis', startFen: ANALYSIS_START_FEN, moves: [] }],
   chapterIndex: 0, flipped: false, selected: null, legal: [], annotations: [],
   dragFrom: null, rightStart: null, suppressClickUntil: 0, error: '',
-  info: 'Move pieces freely. Import PGN or draw arrows with right-click.', bound: false, globalBound: false
+  info: '', bound: false, globalBound: false
 };
 function analysisBoardMarkup() {
   return '<section class="analysis-workspace card" id="analysisWorkspace">' +
@@ -59,7 +59,7 @@ function analysisAnnotationSvg() {
 }
 function analysisRenderMoves() {
   const el=$('#analysisMoveList'); if(!el)return;
-  if(!AnalysisBoard.moves.length){el.innerHTML='<span class="analysis-empty-moves">No moves yet. Start playing or import a PGN.</span>';return;}
+  if(!AnalysisBoard.moves.length){el.innerHTML='<span class="analysis-empty-moves">No moves yet. Select a piece to begin.</span>';return;}
   let html='';
   for(let i=0;i<AnalysisBoard.moves.length;i+=2){
     const wp=i+1,bp=i+2;
