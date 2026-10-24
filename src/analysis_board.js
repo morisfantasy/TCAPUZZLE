@@ -280,22 +280,24 @@ function analysisBindBoard() {
     menu.hidden=!open;button.setAttribute('aria-expanded',String(open));
   };
   $('#analysisCopyFen').onclick=async()=>{
-    const fen=analysisGameAt(AnalysisBoard.currentPly).fen();
     try{
-      if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(fen);
-      else throw new Error('Clipboard API unavailable');
-    }catch{
-      let copied=false;const fallback=document.createElement('textarea');fallback.value=fen;fallback.setAttribute('readonly','');
-      fallback.style.position='fixed';fallback.style.opacity='0';document.body.appendChild(fallback);fallback.select();
-      try{copied=document.execCommand('copy');}catch{}fallback.remove();
-      if(!copied){$('#analysisStatus').textContent='Could not copy FEN. Select and copy it manually from the board position.';return;}
-    }
-    AnalysisBoard.info='FEN copied to clipboard.';analysisRenderBoard();$('#analysisMoreMenu').hidden=true;
+      const fen=analysisGameAt(AnalysisBoard.currentPly).fen();
+      try{
+        if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(fen);
+        else throw new Error('Clipboard API unavailable');
+      }catch{
+        let copied=false;const fallback=document.createElement('textarea');fallback.value=fen;fallback.setAttribute('readonly','');
+        fallback.style.position='fixed';fallback.style.opacity='0';document.body.appendChild(fallback);fallback.select();
+        try{copied=document.execCommand('copy');}catch{}fallback.remove();
+        if(!copied){$('#analysisStatus').textContent='Could not copy FEN. Select and copy it manually from the board position.';return;}
+      }
+      AnalysisBoard.info='FEN copied to clipboard.';analysisRenderBoard();$('#analysisMoreMenu').hidden=true;
+    }catch(e){$('#analysisStatus').textContent=e&&e.message?e.message:'Could not copy FEN.';}
   };
   $('#analysisExportPgn').onclick=()=>{
     try{
       const g=analysisGameAt(AnalysisBoard.moves.length);
-      const blob=new Blob([g.pgn({max_width:80,newline_char:'\\n'})],{type:'application/x-chess-pgn;charset=utf-8'});
+      const blob=new Blob([g.pgn({max_width:80,newline_char:'\n'})],{type:'application/x-chess-pgn;charset=utf-8'});
       const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='tca-analysis.pgn';
       document.body.appendChild(a);a.click();a.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);
       AnalysisBoard.info='PGN download started.';analysisRenderBoard();$('#analysisMoreMenu').hidden=true;
