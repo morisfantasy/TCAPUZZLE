@@ -35,10 +35,10 @@ async function initDb() {
   await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(16) NOT NULL DEFAULT 'user'");
   const legacyAdmins = (process.env.TCA_ADMIN_USERNAMES || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
   if (legacyAdmins.length) {
-    await pool.query("UPDATE users SET role='admin' WHERE lower(username)=ANY($1::text[]) AND role='user' AND lower(username) <> 'prueba'", [legacyAdmins]);
+    await pool.query("UPDATE users SET role='admin' WHERE lower(username)=ANY($1::text[]) AND role='user' AND lower(username) <> 'p11'", [legacyAdmins]);
   }
   // Bootstrap the requested owner account as the only superadmin; never demote it through the UI.
-  await pool.query("UPDATE users SET role='superadmin' WHERE lower(username)='prueba'");
+  await pool.query("UPDATE users SET role='superadmin' WHERE lower(username)='p11'");
 }
 
 function hashPassword(password, salt = crypto.randomBytes(16)) {
