@@ -219,6 +219,14 @@ function analysisLoadChapter(i) {
   const wrap=$('#analysisChapterWrap');if(wrap)wrap.hidden=AnalysisBoard.chapters.length<2;
   analysisRenderBoard();
 }
+function analysisCloseMoreMenu(){
+  const menu=$('#analysisMoreMenu'),button=$('#analysisMoreButton');
+  if(!menu||!button)return;
+  menu.hidden=true;button.setAttribute('aria-expanded','false');
+  const home=menu._analysisHome,next=menu._analysisNext;
+  if(home&&menu.parentNode===document.body)home.insertBefore(menu,next&&next.parentNode===home?next:null);
+  menu.style.position='';menu.style.left='';menu.style.top='';menu.style.right='';
+}
 function analysisBindBoard() {
   const board=$('#analysisBoard');if(!board)return;
   board.addEventListener('click',e=>{const sq=e.target.closest('[data-square]');if(sq)analysisSelectSquare(sq.dataset.square);});
@@ -295,15 +303,9 @@ function analysisBindBoard() {
   };
   $('#analysisChapter').onchange=e=>analysisLoadChapter(Number(e.target.value));
   const moreMenu=$('#analysisMoreMenu'),moreButton=$('#analysisMoreButton');
-  const moreMenuHome=moreMenu.parentNode,moreMenuNext=moreMenu.nextSibling;
-  function analysisCloseMoreMenu(){
-    moreMenu.hidden=true;
-    moreButton.setAttribute('aria-expanded','false');
-    if(moreMenuHome&&moreMenu.parentNode===document.body)moreMenuHome.insertBefore(moreMenu,moreMenuNext);
-    moreMenu.style.position='';moreMenu.style.left='';moreMenu.style.top='';moreMenu.style.right='';
-  }
   moreButton.onclick=()=>{
     if(!moreMenu.hidden){analysisCloseMoreMenu();return;}
+    moreMenu._analysisHome=moreMenu.parentNode;moreMenu._analysisNext=moreMenu.nextSibling;
     // The move panel clips overflow; move the menu to body while open so it can actually be seen.
     document.body.appendChild(moreMenu);
     moreMenu.style.position='fixed';moreMenu.style.right='auto';
