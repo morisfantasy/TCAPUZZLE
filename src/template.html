@@ -553,6 +553,18 @@ a{color:inherit}
 @media(max-width:900px){.analysis-layout{grid-template-columns:minmax(0,1fr)}.analysis-board-wrap{max-width:min(100%,620px)}.analysis-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.analysis-side-card:first-child{grid-row:span 2}}
 @media(max-width:560px){.analysis-workspace{padding:12px;border-radius:14px}.analysis-heading{margin-bottom:14px}.analysis-heading p{font-size:.86rem}.analysis-layout{gap:16px}.analysis-toolbar{gap:4px}.analysis-toolbar .btn{padding:6px 8px;min-height:34px;font-size:.8rem}.analysis-ply{order:2;width:100%;padding:2px 0}.analysis-toolbar-spacer{display:none}.analysis-side{display:flex}.analysis-rank{left:2px;top:2px}.analysis-file{right:2px;bottom:2px}.analysis-square.legal:has(.analysis-piece):after{border-width:2px}}
 
+
+/* Superadmin-only user management */
+.superadmin-users{margin:0 auto 20px;max-width:1240px;padding:clamp(14px,2.2vw,24px);border:2px solid var(--navy);border-radius:15px;box-shadow:0 4px 0 var(--navy);background:var(--surface)}
+.superadmin-users-head{display:flex;align-items:center;justify-content:space-between;gap:18px}.superadmin-users-head h2{margin:4px 0 6px;font-size:clamp(1.2rem,2.5vw,1.65rem)}.superadmin-users-head p{margin:0;color:var(--ink-soft);font-weight:700;font-size:.9rem;line-height:1.4}
+.superadmin-users-head .btn{flex:none}.superadmin-status{margin:14px 0 8px;color:var(--royal);font-size:.85rem;font-weight:900}
+.superadmin-users-list{display:flex;flex-direction:column;gap:8px;max-height:440px;overflow:auto;margin-top:8px}
+.superadmin-user-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1.5px solid var(--muted);border-radius:10px;background:var(--tile)}
+.superadmin-user-info{display:flex;flex-direction:column;gap:3px;min-width:0}.superadmin-user-info strong{font-size:.95rem;overflow-wrap:anywhere}.superadmin-user-info span{font-size:.8rem;color:var(--ink-soft);font-weight:700}
+.superadmin-user-action{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex:none}.superadmin-user-action .btn{padding:7px 10px;font-size:.8rem;white-space:nowrap}
+.superadmin-role{font-size:.75rem;font-weight:1000;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft)}.superadmin-role.super{color:var(--royal)}
+@media(max-width:560px){.superadmin-users-head{align-items:flex-start;flex-direction:column}.superadmin-users-head .btn{width:100%}.superadmin-user-row{align-items:flex-start;flex-direction:column}.superadmin-user-action{width:100%;justify-content:space-between}.superadmin-user-action .btn{flex:none}}
+
 </style>
 </head>
 <body>

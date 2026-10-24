@@ -20,7 +20,8 @@ async function initDb() {
       username VARCHAR(24) UNIQUE NOT NULL,
       name VARCHAR(80) NOT NULL,
       password_hash TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      role VARCHAR(16) NOT NULL DEFAULT 'user'
     );
     CREATE TABLE IF NOT EXISTS sessions (
       token_hash CHAR(64) PRIMARY KEY,
@@ -31,6 +32,13 @@ async function initDb() {
     CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS sessions_expires_at_idx ON sessions(expires_at);
   `);
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(16) NOT NULL DEFAULT 'user'");
+  const legacyAdmins = (process.env.TCA_ADMIN_USERNAMES || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+  if (legacyAdmins.length) {
+    await pool.query("UPDATE users SET role='admin' WHERE lower(username)=ANY($1::text[]) AND role='user' AND lower(username) <> 'prueba'", [legacyAdmins]);
+  }
+  // Bootstrap the requested owner account as the only superadmin; never demote it through the UI.
+  await pool.query("UPDATE users SET role='superadmin' WHERE lower(username)='prueba'");
 }
 
 function hashPassword(password, salt = crypto.randomBytes(16)) {
@@ -76,16 +84,27 @@ async function currentUser(req) {
   const token = parseCookies(req).tca_session;
   if (!token) return null;
   const r = await pool.query(
-    `SELECT u.id,u.username,u.name FROM sessions s JOIN users u ON u.id=s.user_id
+    `SELECT u.id,u.username,u.name,u.role FROM sessions s JOIN users u ON u.id=s.user_id
      WHERE s.token_hash=$1 AND s.expires_at > NOW()`,
     [tokenHash(token)]
   );
   return r.rows[0] || null;
 }
 
-function isAdminUsername(username) {
-  const configured = (process.env.TCA_ADMIN_USERNAMES || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-  return configured.includes(String(username || '').trim().toLowerCase());
+function roleFlags(role) {
+  return { role, isAdmin: role === 'admin' || role === 'superadmin', isSuperadmin: role === 'superadmin' };
+}
+async function requireSuperadmin(req, res) {
+  const user = await currentUser(req);
+  if (!user) {
+    json(res, 401, { error: 'Please sign in again.' });
+    return null;
+  }
+  if (user.role !== 'superadmin') {
+    json(res, 403, { error: 'Only the superadmin can manage user roles.' });
+    return null;
+  }
+  return user;
 }
 async function createSession(res, userId) {
   const token = crypto.randomBytes(32).toString('hex');
@@ -98,7 +117,7 @@ async function handleApi(req, res, pathname) {
     if (req.method === 'GET' && pathname === '/api/me') {
       const u = await currentUser(req);
       if (!u) return json(res, 401, { error: 'Not signed in' });
-      return json(res, 200, { user: { name: u.name, username: u.username, key: u.username, isAdmin: isAdminUsername(u.username) } });
+      return json(res, 200, { user: { name: u.name, username: u.username, key: u.username, ...roleFlags(u.role) } });
     }
     if (req.method === 'POST' && pathname === '/api/register') {
       const { name = '', username = '', password = '' } = await readJson(req);
@@ -109,7 +128,7 @@ async function handleApi(req, res, pathname) {
       let row;
       try {
         row = (await pool.query(
-          'INSERT INTO users(username,name,password_hash) VALUES($1,$2,$3) RETURNING id,username,name',
+          'INSERT INTO users(username,name,password_hash) VALUES($1,$2,$3) RETURNING id,username,name,role',
           [cleanUser, cleanName, hashPassword(String(password))]
         )).rows[0];
       } catch (e) {
@@ -117,17 +136,42 @@ async function handleApi(req, res, pathname) {
         throw e;
       }
       const cookie = await createSession(res, row.id);
-      return json(res, 201, { user: { name: row.name, username: row.username, key: row.username, isAdmin: isAdminUsername(row.username) } }, { 'Set-Cookie': cookie });
+      return json(res, 201, { user: { name: row.name, username: row.username, key: row.username, ...roleFlags(row.role) } }, { 'Set-Cookie': cookie });
     }
     if (req.method === 'POST' && pathname === '/api/login') {
       const { username = '', password = '' } = await readJson(req);
       const cleanUser = String(username).trim().toLowerCase();
-      const row = (await pool.query('SELECT id,username,name,password_hash FROM users WHERE username=$1', [cleanUser])).rows[0];
+      const row = (await pool.query('SELECT id,username,name,password_hash,role FROM users WHERE username=$1', [cleanUser])).rows[0];
       if (!row || !verifyPassword(String(password), row.password_hash)) {
         return json(res, 401, { error: 'Username or password is not right. Check them and try again.' });
       }
       const cookie = await createSession(res, row.id);
-      return json(res, 200, { user: { name: row.name, username: row.username, key: row.username, isAdmin: isAdminUsername(row.username) } }, { 'Set-Cookie': cookie });
+      return json(res, 200, { user: { name: row.name, username: row.username, key: row.username, ...roleFlags(row.role) } }, { 'Set-Cookie': cookie });
+    }
+    if (req.method === 'GET' && pathname === '/api/superadmin/users') {
+      const actor = await requireSuperadmin(req, res);
+      if (!actor) return;
+      const result = await pool.query("SELECT id,username,name,role,created_at FROM users ORDER BY created_at DESC, username ASC");
+      return json(res, 200, { users: result.rows });
+    }
+    if (req.method === 'POST' && pathname === '/api/superadmin/users/role') {
+      const actor = await requireSuperadmin(req, res);
+      if (!actor) return;
+      const { username = '', isAdmin } = await readJson(req);
+      const cleanUser = String(username).trim().toLowerCase();
+      if (!/^[a-z0-9._-]{3,24}$/.test(cleanUser) || typeof isAdmin !== 'boolean') {
+        return json(res, 400, { error: 'Choose a valid user and admin setting.' });
+      }
+      const target = (await pool.query("SELECT id,username,name,role FROM users WHERE lower(username)=$1", [cleanUser])).rows[0];
+      if (!target) return json(res, 404, { error: 'User not found.' });
+      if (target.role === 'superadmin') return json(res, 403, { error: 'The superadmin role cannot be changed here.' });
+      const nextRole = isAdmin ? 'admin' : 'user';
+      const updated = (await pool.query(
+        "UPDATE users SET role=$1 WHERE id=$2 AND role <> 'superadmin' RETURNING id,username,name,role",
+        [nextRole, target.id]
+      )).rows[0];
+      if (!updated) return json(res, 409, { error: 'The user role changed; refresh and try again.' });
+      return json(res, 200, { user: updated, changedBy: actor.username });
     }
     if (req.method === 'POST' && pathname === '/api/logout') {
       const token = parseCookies(req).tca_session;
