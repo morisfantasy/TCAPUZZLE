@@ -467,14 +467,55 @@ function renderAuth(mode){
     }catch(x){err.innerHTML='<div class="form-error">'+esc(x.message)+'</div>';}
   };
 }
+function superadminUsersMarkup(){
+  if(!Auth.current()?.isSuperadmin) return '';
+  return '<section class="card superadmin-users"><div class="superadmin-users-head"><div><span class="eyebrow">CONTROL DEL SISTEMA</span><h2>Gestión de usuarios</h2><p>Solo el superadmin puede conceder o retirar permisos de administrador.</p></div><button class="btn" id="superadminToggleUsers" aria-expanded="false">Ver usuarios</button></div><div id="superadminUsersPanel" hidden><div id="superadminUsersStatus" class="superadmin-status" aria-live="polite"></div><div id="superadminUsersList" class="superadmin-users-list"></div></div></section>';
+}
+async function loadSuperadminUsers(){
+  const status=$('#superadminUsersStatus'),list=$('#superadminUsersList');
+  if(!status||!list)return;
+  status.textContent='Cargando usuarios…';list.innerHTML='';
+  try{
+    const data=await api('/api/superadmin/users');
+    const users=data.users||[];
+    status.textContent=users.length+' cuentas registradas';
+    list.innerHTML=users.map(u=>{
+      const role=u.role==='superadmin'?'Superadmin':u.role==='admin'?'Admin':'Usuario';
+      const action=u.role==='superadmin'?'':('<button class="btn '+(u.role==='admin'?'white':'mint')+'" data-user-admin="'+esc(u.username)+'" data-grant="'+(u.role!=='admin')+'">'+(u.role==='admin'?'Retirar admin':'Hacer admin')+'</button>');
+      return '<div class="superadmin-user-row"><div class="superadmin-user-info"><strong>'+esc(u.name)+'</strong><span>@'+esc(u.username)+' · '+role+'</span></div><div class="superadmin-user-action"><span class="superadmin-role '+(u.role==='superadmin'?'super':'')+'">'+role+'</span>'+action+'</div></div>';
+    }).join('')||'<p>No hay usuarios registrados.</p>';
+    $('[data-user-admin]').forEach(button=>button.onclick=async()=>{
+      const username=button.dataset.userAdmin,grant=button.dataset.grant==='true';
+      button.disabled=true;status.textContent=(grant?'Concediendo':'Retirando')+' permisos a @'+username+'…';
+      try{
+        await api('/api/superadmin/users/role',{username,isAdmin:grant});
+        await loadSuperadminUsers();
+      }catch(error){status.textContent=error.message;button.disabled=false;}
+    });
+  }catch(error){status.textContent=error.message;}
+}
+function bindSuperadminUsers(){
+  const button=$('#superadminToggleUsers'),panel=$('#superadminUsersPanel');
+  if(!button||!panel)return;
+  button.onclick=async()=>{
+    const open=panel.hidden;
+    panel.hidden=!open;
+    button.setAttribute('aria-expanded',String(open));
+    button.textContent=open?'Ocultar usuarios':'Ver usuarios';
+    if(open) await loadSuperadminUsers();
+  };
+}
 function renderHome(){
   const admin=!!Auth.current()?.isAdmin;
+  const superadmin=!!Auth.current()?.isSuperadmin;
   const analysis=admin?analysisBoardMarkup():'';
-  root.innerHTML=shell(analysis+'<section class="hub-head"><h1>'+esc(t('choose'))+'</h1><p>'+esc(t('chooseSub'))+'</p></section>'+
+  const users=superadmin?superadminUsersMarkup():'';
+  root.innerHTML=shell(users+analysis+'<section class="hub-head"><h1>'+esc(t('choose'))+'</h1><p>'+esc(t('chooseSub'))+'</p></section>'+
   '<div class="hub-grid"><a class="card hub-card books" href="#/library"><span class="eyebrow">'+esc(t('booksEyebrow'))+'</span><h2>'+esc(t('books'))+'</h2><p>'+esc(t('booksDesc'))+'</p><span class="soon-pill">'+esc(t('openBooks'))+'</span><span class="hub-icon">♟️</span></a>'+
   '<a class="card hub-card courses" href="#/courses"><span class="eyebrow">'+esc(t('coursesEyebrow'))+'</span><h2>'+esc(t('courses'))+'</h2><p>'+esc(t('coursesDesc'))+'</p><span class="soon-pill">'+esc(t('soon'))+'</span><span class="hub-icon">▶️</span></a></div>');
   bindShell();
   if(admin) bindAnalysisBoard();
+  if(superadmin) bindSuperadminUsers();
 }
 function renderCourses(){
   root.innerHTML=shell('<nav class="crumbs"><a href="#/home">'+esc(t('backHome'))+'</a><span class="sep">/</span><span>'+esc(t('courses'))+'</span></nav>'+
