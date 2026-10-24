@@ -152,10 +152,10 @@ function analysisStripVariations(pgn) {
   }return out;
 }
 function analysisSplitPgnGames(pgn) {
-  const normalized=String(pgn||'').replace(/^\\uFEFF/,'').replace(/\\r\\n?/g,'\\n').trim();
+  const normalized=String(pgn||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim();
   if(!normalized)return [];
   // PGN study exports normally delimit each game/chapter with an Event header.
-  return normalized.split(/(?=^\\[Event\\s+")/m).map(s=>s.trim()).filter(Boolean);
+  return normalized.split(/(?=^\[Event\s+")/m).map(s=>s.trim()).filter(Boolean);
 }
 function analysisPgnTitle(headers,index) {
   let title=headers.ChapterName||headers.Chapter||headers.Event||'';
@@ -165,12 +165,12 @@ function analysisPgnTitle(headers,index) {
 }
 function analysisImportPgn(text) {
   if(!window.Chess)throw new Error('The chess rules library has not loaded. Refresh and try again.');
-  const pgn=String(text||'').replace(/^\\uFEFF/,'').replace(/\\r\\n?/g,'\\n').trim();
+  const pgn=String(text||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim();
   if(!pgn)throw new Error('Choose a PGN file or paste a PGN first.');
   const parts=analysisSplitPgnGames(pgn),chapters=[];
   (parts.length?parts:[pgn]).forEach((part,i)=>{
     const headers=analysisParseHeaders(part);
-    const clean=analysisStripVariations(part).replace(/^%.*$/gm,'').replace(/\\$\\d+/g,'').trim();
+    const clean=analysisStripVariations(part).replace(/^%.*$/gm,'').replace(/\$\d+/g,'').trim();
     let game=new window.Chess(),loaded=false,parseError=null;
     try { loaded=game.load_pgn(clean,{sloppy:true}); } catch(e) { parseError=e; }
     if(loaded===false||parseError) {
