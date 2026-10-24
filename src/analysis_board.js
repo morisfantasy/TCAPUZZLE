@@ -20,7 +20,7 @@ function analysisBoardMarkup() {
         '<button class="analysis-icon-btn" id="analysisMoreButton" title="More tools" aria-label="More tools" aria-expanded="false">⋯</button>' +
       '</div></div>' +
       '<div class="analysis-more-menu" id="analysisMoreMenu" hidden>' +
-        '<button type="button" id="analysisCopyFen">Copy FEN</button><button type="button" id="analysisExportPgn">Export PGN</button><button type="button" id="analysisClearMarks">Clear arrows and circles</button>' +
+        '<button type="button" id="analysisCopyFen">Copy current position (FEN)</button><button type="button" id="analysisExportPgn">Download moves (PGN)</button><button type="button" id="analysisClearMarks">Clear arrows and circles</button>' +
       '</div>' +
       '<div class="analysis-chapter-select" id="analysisChapterWrap" hidden><label for="analysisChapter">Chapter</label><select id="analysisChapter" aria-label="Select PGN chapter"></select></div>' +
       '<div class="analysis-chapter-meta" id="analysisChapterMeta"></div><div class="analysis-move-list" id="analysisMoveList"></div>' +
@@ -233,7 +233,13 @@ function analysisBindBoard() {
       else if(e.key==='ArrowUp'){e.preventDefault();analysisSetPosition(AnalysisBoard.moves.length);}
       else if(e.key==='ArrowDown'){e.preventDefault();analysisSetPosition(0);}
     });
-    document.addEventListener('click',e=>{const context=$('#analysisMoveContextMenu');if(context&&!e.target.closest('#analysisMoveContextMenu')&&!e.target.closest('#analysisMoveList'))context.hidden=true;});
+    document.addEventListener('click',e=>{
+      const context=$('#analysisMoveContextMenu'),menu=$('#analysisMoreMenu');
+      if(context&&!e.target.closest('#analysisMoveContextMenu')&&!e.target.closest('#analysisMoveList'))context.hidden=true;
+      if(menu&&!menu.hidden&&!e.target.closest('#analysisMoreMenu')&&!e.target.closest('#analysisMoreButton')){
+        menu.hidden=true;$('#analysisMoreButton')?.setAttribute('aria-expanded','false');
+      }
+    });
     AnalysisBoard.uiBound=true;
   }
   board.addEventListener('pointerup',e=>{if(e.button===2)e.preventDefault();});
@@ -263,10 +269,41 @@ function analysisBindBoard() {
   };
   $('#analysisImport').onclick=()=>{try{analysisImportPgn(input.value);AnalysisBoard.error='';}catch(e){$('#analysisImportMessage').textContent=e&&e.message?e.message:'Could not import this PGN.';}};
   $('#analysisChapter').onchange=e=>analysisLoadChapter(Number(e.target.value));
-  $('#analysisMoreButton').onclick=()=>{const menu=$('#analysisMoreMenu'),open=menu.hidden;menu.hidden=!open;$('#analysisMoreButton').setAttribute('aria-expanded',String(open));};
-  $('#analysisCopyFen').onclick=async()=>{try{await navigator.clipboard.writeText(analysisGameAt(AnalysisBoard.currentPly).fen());AnalysisBoard.info='FEN copied.';analysisRenderBoard();$('#analysisMoreMenu').hidden=true;}catch{$('#analysisStatus').textContent='Could not copy FEN. Your browser may block clipboard access.';}};
-  $('#analysisExportPgn').onclick=()=>{try{const g=analysisGameAt(AnalysisBoard.moves.length),blob=new Blob([g.pgn({max_width:80,newline_char:'\\n'})],{type:'application/x-chess-pgn;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='tca-analysis.pgn';a.click();URL.revokeObjectURL(url);$('#analysisMoreMenu').hidden=true;}catch(e){$('#analysisStatus').textContent=e.message;}};
-  $('#analysisClearMarks').onclick=()=>{AnalysisBoard.annotations=[];analysisRenderBoard();$('#analysisMoreMenu').hidden=true;};
+  $('#analysisMoreButton').onclick=()=>{
+    const menu=$('#analysisMoreMenu'),button=$('#analysisMoreButton'),open=menu.hidden;
+    if(open){
+      const rect=button.getBoundingClientRect(),menuWidth=205,menuHeight=132;
+      menu.style.position='fixed';menu.style.right='auto';
+      menu.style.left=Math.max(8,Math.min(rect.right-menuWidth,window.innerWidth-menuWidth-8))+'px';
+      menu.style.top=Math.max(8,Math.min(rect.bottom+6,window.innerHeight-menuHeight-8))+'px';
+    }
+    menu.hidden=!open;button.setAttribute('aria-expanded',String(open));
+  };
+  $('#analysisCopyFen').onclick=async()=>{
+    const fen=analysisGameAt(AnalysisBoard.currentPly).fen();
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(fen);
+      else throw new Error('Clipboard API unavailable');
+    }catch{
+      let copied=false;const fallback=document.createElement('textarea');fallback.value=fen;fallback.setAttribute('readonly','');
+      fallback.style.position='fixed';fallback.style.opacity='0';document.body.appendChild(fallback);fallback.select();
+      try{copied=document.execCommand('copy');}catch{}fallback.remove();
+      if(!copied){$('#analysisStatus').textContent='Could not copy FEN. Select and copy it manually from the board position.';return;}
+    }
+    AnalysisBoard.info='FEN copied to clipboard.';analysisRenderBoard();$('#analysisMoreMenu').hidden=true;
+  };
+  $('#analysisExportPgn').onclick=()=>{
+    try{
+      const g=analysisGameAt(AnalysisBoard.moves.length);
+      const blob=new Blob([g.pgn({max_width:80,newline_char:'\\n'})],{type:'application/x-chess-pgn;charset=utf-8'});
+      const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='tca-analysis.pgn';
+      document.body.appendChild(a);a.click();a.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+      AnalysisBoard.info='PGN download started.';analysisRenderBoard();$('#analysisMoreMenu').hidden=true;
+    }catch(e){$('#analysisStatus').textContent=e&&e.message?e.message:'Could not export PGN.';}
+  };
+  $('#analysisClearMarks').onclick=()=>{
+    AnalysisBoard.annotations=[];AnalysisBoard.info='Arrows and circles cleared.';analysisRenderBoard();$('#analysisMoreMenu').hidden=true;
+  };
   const context=$('#analysisMoveContextMenu');let deletePly=null;
   $('#analysisMoveList').addEventListener('contextmenu',e=>{
     const move=e.target.closest('[data-ply]');if(!move)return;
