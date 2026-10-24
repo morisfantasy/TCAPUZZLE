@@ -11,9 +11,7 @@ function analysisBoardMarkup() {
   return '<section class="analysis-page" id="analysisPage">' +
     '<div class="analysis-layout"><div class="analysis-board-column">' +
       '<div class="analysis-board-wrap"><div class="analysis-board" id="analysisBoard" aria-label="Interactive chess analysis board"></div></div>' +
-      '<div class="analysis-board-toolbar" aria-label="Board controls">' +
-        '<button class="analysis-icon-btn" id="analysisFlip" title="Flip board" aria-label="Flip board">⇅</button>' +
-      '</div><div class="analysis-status" id="analysisStatus" role="status"></div>' +
+      '<div class="analysis-status" id="analysisStatus" role="status"></div>' +
     '</div><aside class="analysis-side"><div class="analysis-moves-panel">' +
       '<div class="analysis-moves-head"><h2>Moves</h2><div class="analysis-moves-actions">' +
         '<button class="analysis-icon-btn" id="analysisOpenImport" title="Import PGN" aria-label="Import PGN">↥</button>' +
@@ -29,6 +27,8 @@ function analysisBoardMarkup() {
         '<button class="analysis-icon-btn" id="analysisPrev" title="Previous move (Left Arrow)" aria-label="Previous move">←</button>' +
         '<button class="analysis-icon-btn" id="analysisNext" title="Next move (Right Arrow)" aria-label="Next move">→</button>' +
         '<button class="analysis-icon-btn" id="analysisEnd" title="Go to end (Up Arrow)" aria-label="Go to end">⏭</button>' +
+        '<span class="analysis-control-divider"></span>' +
+        '<button class="analysis-icon-btn" id="analysisFlip" title="Flip board" aria-label="Flip board">⇅</button>' +
         '<span class="analysis-ply" id="analysisPly">Start position</span>' +
       '</div>' +
     '</div></aside></div>' +
@@ -154,8 +154,9 @@ function analysisStripVariations(pgn) {
 function analysisSplitPgnGames(pgn) {
   const normalized=String(pgn||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim();
   if(!normalized)return [];
-  // PGN study exports normally delimit each game/chapter with an Event header.
-  return normalized.split(/(?=^\[Event\s+")/m).map(s=>s.trim()).filter(Boolean);
+  // Each game in a multi-game PGN is normally introduced by an Event tag.
+  const chunks=normalized.split(/(?=^\[Event\s+")/m).map(s=>s.trim()).filter(Boolean);
+  return chunks.length?chunks:[normalized];
 }
 function analysisPgnTitle(headers,index) {
   let title=headers.ChapterName||headers.Chapter||headers.Event||'';
@@ -163,36 +164,51 @@ function analysisPgnTitle(headers,index) {
   if(!title||title.toLowerCase()==='casual game')title=[headers.White,headers.Black].filter(Boolean).join(' – ')||'Game '+(index+1);
   return title;
 }
+function analysisTryLoadPgn(pgn) {
+  const game=new window.Chess();
+  let result;
+  try {
+    result=game.load_pgn(pgn,{sloppy:true});
+    if(result!==false) return {game,ok:true};
+  } catch(error) {
+    // Retry below after stripping comments, NAGs and side variations.
+  }
+  const cleaned=analysisStripVariations(pgn).replace(/^%.*$/gm,'').replace(/\$\d+/g,'').trim();
+  const retry=new window.Chess();
+  try {
+    const retryResult=retry.load_pgn(cleaned,{sloppy:true});
+    if(retryResult!==false) return {game:retry,ok:true};
+  } catch(error) {
+    return {game:null,ok:false,error};
+  }
+  return {game:null,ok:false,error:new Error('The PGN could not be parsed by the chess library.')};
+}
 function analysisImportPgn(text) {
-  if(!window.Chess)throw new Error('The chess rules library has not loaded. Refresh and try again.');
   const pgn=String(text||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim();
-  if(!pgn)throw new Error('Choose a PGN file or paste a PGN first.');
+  if(!pgn)throw new Error('Choose a PGN file or paste the PGN text first.');
+  if(typeof window.Chess!=='function')throw new Error('The chess library did not load. Refresh the page and try again.');
   const parts=analysisSplitPgnGames(pgn),chapters=[];
-  (parts.length?parts:[pgn]).forEach((part,i)=>{
-    const headers=analysisParseHeaders(part);
-    const clean=analysisStripVariations(part).replace(/^%.*$/gm,'').replace(/\$\d+/g,'').trim();
-    let game=new window.Chess(),loaded=false,parseError=null;
-    try { loaded=game.load_pgn(clean,{sloppy:true}); } catch(e) { parseError=e; }
-    if(loaded===false||parseError) {
-      // Retry untouched PGN for exports whose comments/annotations need the native parser.
-      try {
-        const retry=new window.Chess(),retryLoaded=retry.load_pgn(part,{sloppy:true});
-        if(retryLoaded!==false){game=retry;loaded=retryLoaded;parseError=null;}
-        else loaded=false;
-      } catch(e) { parseError=e;loaded=false; }
+  for(let i=0;i<parts.length;i++){
+    const part=parts[i],headers=analysisParseHeaders(part);
+    const parsed=analysisTryLoadPgn(part);
+    if(!parsed.ok){
+      throw new Error('Could not import game/chapter '+(i+1)+'. Check that the PGN uses standard chess notation.'+(parsed.error&&parsed.error.message?' Details: '+parsed.error.message:''));
     }
-    if(loaded===false||parseError) {
-      throw new Error('Could not read game/chapter '+(i+1)+'. Check that the file is a valid PGN with standard chess notation.'+(parseError&&parseError.message?' ('+parseError.message+')':''));
+    const moves=parsed.game.history();
+    // A normal game with move text should not silently become an empty chapter.
+    const movetext=part.replace(/^\s*\[[^\]]*\]\s*$/gm,'').replace(/\{[^}]*\}/g,' ').replace(/;[^\n]*/g,' ').trim();
+    if(!moves.length&&/\b\d+\.(?:\.\.)?\s*[KQRBN]?[a-h1-8]/.test(movetext)){
+      throw new Error('The PGN contains move text, but no moves could be read in game/chapter '+(i+1)+'.');
     }
-    chapters.push({title:analysisPgnTitle(headers,i),startFen:headers.FEN||ANALYSIS_START_FEN,moves:game.history()});
-  });
+    chapters.push({title:analysisPgnTitle(headers,i),startFen:headers.FEN||ANALYSIS_START_FEN,moves});
+  }
   if(!chapters.length)throw new Error('No games or chapters were found in that PGN.');
-  // Do not replace the current board until every chapter has parsed successfully.
+  // Update the board only after all games have parsed successfully.
   AnalysisBoard.chapters=chapters;AnalysisBoard.redoMoves=[];analysisLoadChapter(0);
-  $('#analysisChapter').innerHTML=chapters.map((c,i)=>'<option value="'+i+'">'+esc((i+1)+'. '+c.title)+'</option>').join('');
+  $('#analysisChapter').innerHTML=chapters.map((ch,i)=>'<option value="'+i+'">'+esc((i+1)+'. '+ch.title)+'</option>').join('');
   $('#analysisChapterWrap').hidden=chapters.length<2;
   $('#analysisChapter').value='0';
-  $('#analysisImportMessage').textContent='Imported '+chapters.length+(chapters.length===1?' game.':' chapters.');
+  $('#analysisImportMessage').textContent='Successfully imported '+chapters.length+(chapters.length===1?' game.':' games/chapters.');
   $('#analysisImportModal').hidden=true;
 }
 function analysisLoadChapter(i) {
@@ -236,9 +252,7 @@ function analysisBindBoard() {
     document.addEventListener('click',e=>{
       const context=$('#analysisMoveContextMenu'),menu=$('#analysisMoreMenu');
       if(context&&!e.target.closest('#analysisMoveContextMenu')&&!e.target.closest('#analysisMoveList'))context.hidden=true;
-      if(menu&&!menu.hidden&&!e.target.closest('#analysisMoreMenu')&&!e.target.closest('#analysisMoreButton')){
-        menu.hidden=true;$('#analysisMoreButton')?.setAttribute('aria-expanded','false');
-      }
+      if(menu&&!menu.hidden&&!e.target.closest('#analysisMoreMenu')&&!e.target.closest('#analysisMoreButton'))analysisCloseMoreMenu();
     });
     AnalysisBoard.uiBound=true;
   }
@@ -249,7 +263,7 @@ function analysisBindBoard() {
   $('#analysisEnd').onclick=()=>analysisSetPosition(AnalysisBoard.moves.length);
   $('#analysisFlip').onclick=()=>{AnalysisBoard.flipped=!AnalysisBoard.flipped;analysisRenderBoard();};
   const modal=$('#analysisImportModal'),input=$('#analysisPgnText'),file=$('#analysisPgnFile');
-  const openImport=()=>{modal.hidden=false;$('#analysisMoreMenu').hidden=true;$('#analysisMoreButton').setAttribute('aria-expanded','false');input.focus();};
+  const openImport=()=>{modal.hidden=false;analysisCloseMoreMenu();input.focus();};
   const closeImport=()=>{modal.hidden=true;};
   $('#analysisOpenImport').onclick=openImport;
   $('#analysisCloseImport').onclick=closeImport;
@@ -260,24 +274,43 @@ function analysisBindBoard() {
     try{
       let contents;
       if(typeof f.text==='function')contents=await f.text();
-      else contents=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(new Error('Could not read this file.'));reader.readAsText(f);});
+      else contents=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(new Error('The selected file could not be read.'));reader.readAsText(f);});
+      if(!contents.trim())throw new Error('The selected file is empty.');
       input.value=contents;
       analysisImportPgn(contents);
       AnalysisBoard.error='';
-    }catch(err){message.textContent=err&&err.message?err.message:'Could not import this PGN file.';}
-    finally{file.value='';}
+    }catch(err){
+      const messageText=err&&err.message?err.message:'Could not import this PGN file.';
+      message.textContent='Import failed: '+messageText;
+      $('#analysisStatus').textContent=messageText;
+    }finally{file.value='';}
   };
-  $('#analysisImport').onclick=()=>{try{analysisImportPgn(input.value);AnalysisBoard.error='';}catch(e){$('#analysisImportMessage').textContent=e&&e.message?e.message:'Could not import this PGN.';}};
-  $('#analysisChapter').onchange=e=>analysisLoadChapter(Number(e.target.value));
-  $('#analysisMoreButton').onclick=()=>{
-    const menu=$('#analysisMoreMenu'),button=$('#analysisMoreButton'),open=menu.hidden;
-    if(open){
-      const rect=button.getBoundingClientRect(),menuWidth=205,menuHeight=132;
-      menu.style.position='fixed';menu.style.right='auto';
-      menu.style.left=Math.max(8,Math.min(rect.right-menuWidth,window.innerWidth-menuWidth-8))+'px';
-      menu.style.top=Math.max(8,Math.min(rect.bottom+6,window.innerHeight-menuHeight-8))+'px';
+  $('#analysisImport').onclick=()=>{
+    try{analysisImportPgn(input.value);AnalysisBoard.error='';}
+    catch(e){
+      const messageText=e&&e.message?e.message:'Could not import this PGN.';
+      $('#analysisImportMessage').textContent='Import failed: '+messageText;
+      $('#analysisStatus').textContent=messageText;
     }
-    menu.hidden=!open;button.setAttribute('aria-expanded',String(open));
+  };
+  $('#analysisChapter').onchange=e=>analysisLoadChapter(Number(e.target.value));
+  const moreMenu=$('#analysisMoreMenu'),moreButton=$('#analysisMoreButton');
+  const moreMenuHome=moreMenu.parentNode,moreMenuNext=moreMenu.nextSibling;
+  function analysisCloseMoreMenu(){
+    moreMenu.hidden=true;
+    moreButton.setAttribute('aria-expanded','false');
+    if(moreMenuHome&&moreMenu.parentNode===document.body)moreMenuHome.insertBefore(moreMenu,moreMenuNext);
+    moreMenu.style.position='';moreMenu.style.left='';moreMenu.style.top='';moreMenu.style.right='';
+  }
+  moreButton.onclick=()=>{
+    if(!moreMenu.hidden){analysisCloseMoreMenu();return;}
+    // The move panel clips overflow; move the menu to body while open so it can actually be seen.
+    document.body.appendChild(moreMenu);
+    moreMenu.style.position='fixed';moreMenu.style.right='auto';
+    const rect=moreButton.getBoundingClientRect(),menuWidth=230,menuHeight=150;
+    moreMenu.style.left=Math.max(8,Math.min(rect.right-menuWidth,window.innerWidth-menuWidth-8))+'px';
+    moreMenu.style.top=Math.max(8,Math.min(rect.bottom+6,window.innerHeight-menuHeight-8))+'px';
+    moreMenu.hidden=false;moreButton.setAttribute('aria-expanded','true');
   };
   $('#analysisCopyFen').onclick=async()=>{
     try{
@@ -291,7 +324,7 @@ function analysisBindBoard() {
         try{copied=document.execCommand('copy');}catch{}fallback.remove();
         if(!copied){$('#analysisStatus').textContent='Could not copy FEN. Select and copy it manually from the board position.';return;}
       }
-      AnalysisBoard.info='FEN copied to clipboard.';analysisRenderBoard();$('#analysisMoreMenu').hidden=true;
+      AnalysisBoard.info='FEN copied to clipboard.';analysisRenderBoard();analysisCloseMoreMenu();
     }catch(e){$('#analysisStatus').textContent=e&&e.message?e.message:'Could not copy FEN.';}
   };
   $('#analysisExportPgn').onclick=()=>{
@@ -300,11 +333,11 @@ function analysisBindBoard() {
       const blob=new Blob([g.pgn({max_width:80,newline_char:'\n'})],{type:'application/x-chess-pgn;charset=utf-8'});
       const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='tca-analysis.pgn';
       document.body.appendChild(a);a.click();a.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);
-      AnalysisBoard.info='PGN download started.';analysisRenderBoard();$('#analysisMoreMenu').hidden=true;
+      AnalysisBoard.info='PGN download started.';analysisRenderBoard();analysisCloseMoreMenu();
     }catch(e){$('#analysisStatus').textContent=e&&e.message?e.message:'Could not export PGN.';}
   };
   $('#analysisClearMarks').onclick=()=>{
-    AnalysisBoard.annotations=[];AnalysisBoard.info='Arrows and circles cleared.';analysisRenderBoard();$('#analysisMoreMenu').hidden=true;
+    AnalysisBoard.annotations=[];AnalysisBoard.info='Arrows and circles cleared.';analysisRenderBoard();analysisCloseMoreMenu();
   };
   const context=$('#analysisMoveContextMenu');let deletePly=null;
   $('#analysisMoveList').addEventListener('contextmenu',e=>{
