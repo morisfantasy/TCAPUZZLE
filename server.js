@@ -7,6 +7,17 @@ const { Pool } = require('pg');
 const PORT = process.env.PORT || 3000;
 const ROOT = path.join(__dirname, 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.json': 'application/json' };
+const SRC = path.join(__dirname, 'src');
+const publicAssets = new Map([
+  ['/assets/platform.css', ['platform.css', TYPES['.css']]],
+  ['/assets/calculator.mjs', ['calculator.mjs', TYPES['.js']]],
+  ['/assets/rating.mjs', ['rating.mjs', TYPES['.js']]]
+]);
+const coachAssets = new Map([
+  ['/api/analysis/board.mjs', path.join(SRC, 'analysis_board.mjs')],
+  ['/api/analysis/study.mjs', path.join(SRC, 'study.mjs')],
+  ['/api/analysis/rules.mjs', path.resolve(path.dirname(require.resolve('chess.js')), '../esm/chess.js')]
+]);
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error('DATABASE_URL is required');
 
@@ -67,18 +78,33 @@ function json(res, status, body, extra = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...extra });
   res.end(JSON.stringify(body));
 }
-function readJson(req) {
-  return new Promise((resolve, reject) => {
-    let data = '';
-    req.on('data', c => {
-      data += c;
-      if (data.length > 65536) { reject(new Error('Payload too large')); req.destroy(); }
-    });
-    req.on('end', () => {
-      try { resolve(data ? JSON.parse(data) : {}); } catch { reject(new Error('Invalid JSON')); }
-    });
-    req.on('error', reject);
-  });
+async function readJson(req, limit = 65536) {
+  const chunks = [];
+  let length = 0;
+  for await (const chunk of req) {
+    length += chunk.length;
+    if (length > limit) {
+      const error = new Error('The file is too large.');
+      error.status = 413;
+      throw error;
+    }
+    chunks.push(chunk);
+  }
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); }
+  catch { const error = new Error('Invalid JSON.'); error.status = 400; throw error; }
+}
+async function sendFile(res, filename, type, cache = 'no-store', status = 200) {
+  const data = await fs.promises.readFile(filename);
+  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': cache });
+  res.end(data);
+}
+async function requireCoach(req, res, page) {
+  const user = await currentUser(req);
+  if (user && roleFlags(user.role).isAdmin) return true;
+  const status = user ? 403 : 401;
+  if (page) await sendFile(res, path.join(ROOT, 'index.html'), TYPES['.html'], 'no-store', status);
+  else json(res, status, { error: user ? 'A coach account is required.' : 'Please sign in.' });
+  return false;
 }
 async function currentUser(req) {
   const token = parseCookies(req).tca_session;
@@ -114,6 +140,27 @@ async function createSession(res, userId) {
 }
 async function handleApi(req, res, pathname) {
   try {
+    if (pathname === '/analysis' || pathname.startsWith('/api/analysis/')) {
+      if (!await requireCoach(req, res, pathname === '/analysis' && req.method === 'GET')) return;
+      if (req.method === 'GET') {
+        if (pathname === '/analysis') return await sendFile(res, path.join(ROOT, 'index.html'), TYPES['.html']);
+        if (pathname === '/api/analysis/access') return json(res, 200, { allowed: true });
+        if (coachAssets.has(pathname)) return await sendFile(res, coachAssets.get(pathname), TYPES['.js']);
+      }
+      if (req.method === 'POST' && pathname === '/api/analysis/import') {
+        const { pgn } = await readJson(req, 2200000);
+        if (typeof pgn !== 'string' || Buffer.byteLength(pgn) > 1048576) {
+          return json(res, 400, { code: 'pgnSize', error: 'Use a PGN of up to 1 MiB.' });
+        }
+        const { parseStudy, ImportError } = await import('./src/pgn.mjs');
+        try { return json(res, 200, { chapters: parseStudy(pgn) }); }
+        catch (err) {
+          if (err instanceof ImportError) return json(res, 422, { code: err.code, detail: err.detail, error: err.message });
+          throw err;
+        }
+      }
+      return json(res, 404, { error: 'Not found' });
+    }
     if (req.method === 'GET' && pathname === '/api/me') {
       const u = await currentUser(req);
       if (!u) return json(res, 401, { error: 'Not signed in' });
@@ -125,6 +172,7 @@ async function handleApi(req, res, pathname) {
       if (!cleanName || cleanName.length > 80) return json(res, 400, { error: 'Enter your first name.' });
       if (!/^[a-z0-9._-]{3,24}$/.test(cleanUser)) return json(res, 400, { error: 'Usernames need 3 to 24 letters, numbers, dots or dashes.' });
       if (String(password).length < 6 || String(password).length > 200) return json(res, 400, { error: 'Your password needs at least 6 characters.' });
+      if (cleanUser === 'p11') return json(res, 409, { error: 'That username is taken. Try another one.' });
       let row;
       try {
         row = (await pool.query(
@@ -180,6 +228,7 @@ async function handleApi(req, res, pathname) {
     }
     return json(res, 404, { error: 'Not found' });
   } catch (e) {
+    if (e.status) return json(res, e.status, { error: e.message });
     console.error('API error', e);
     return json(res, 500, { error: 'Server error. Please try again.' });
   }
@@ -189,19 +238,20 @@ const server = http.createServer(async (req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
+  if (publicAssets.has(pathname) && req.method === 'GET') {
+    const [file, type] = publicAssets.get(pathname);
+    try { return await sendFile(res, path.join(SRC, file), type, 'no-cache'); }
+    catch { return json(res, 500, { error: 'Asset could not be loaded.' }); }
+  }
+  if (pathname === '/analysis' || pathname === '/analysis/') return handleApi(req, res, '/analysis');
   if (pathname.startsWith('/api/')) return handleApi(req, res, pathname);
   if (pathname === '/health') { res.writeHead(200); return res.end('ok'); }
 
-  let file = path.normalize(path.join(ROOT, decodeURIComponent(pathname)));
-  if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end(); }
-  fs.stat(file, (err, st) => {
-    if (err || st.isDirectory()) file = path.join(ROOT, 'index.html');
-    fs.readFile(file, (e, buf) => {
-      if (e) { res.writeHead(500); return res.end('Server error'); }
-      res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
-      res.end(buf);
-    });
-  });
+  // The public client only has one entry point. Coach modules are served above.
+  if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });
+  if (!['/', '/index.html', '/calculator', '/calculator/'].includes(pathname)) return json(res, 404, { error: 'Not found' });
+  try { await sendFile(res, path.join(ROOT, 'index.html'), TYPES['.html'], 'no-cache'); }
+  catch { json(res, 500, { error: 'Application could not be loaded.' }); }
 });
 
 initDb()

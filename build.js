@@ -24,9 +24,10 @@ if (check.__book.ch.length !== 10 || ids.length !== 300 || ids.some((id, i) => i
 
 const data = bookData +
   '\nconst PIECES=' + JSON.stringify(pieces) + ';\nconst LOGO="' + logo + '";\nconst BOOK_COVER="' + bookCover + '";';
-const analysisBoardCode = fs.readFileSync(src('analysis_board.js'), 'utf8');
 const appCode = fs.readFileSync(src('workbook_app.js'), 'utf8');
-const combinedAppCode = appCode.replace("'use strict';", "'use strict';\n" + analysisBoardCode);
+// A replacement function preserves literal dollar signs in application code.
+const combinedAppCode = appCode.replace('/*PLATFORM_TEXT*/', () => fs.readFileSync(src('platform-text.js'), 'utf8'))
+  .replace('/*PLATFORM_SHELL*/', () => fs.readFileSync(src('shell.js'), 'utf8'));
 // Fail the build immediately if the browser application contains a syntax error.
 new Function(combinedAppCode);
 const html = fs.readFileSync(src('template.html'), 'utf8')
