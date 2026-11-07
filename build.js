@@ -1,7 +1,7 @@
 // Rebuilds public/index.html from src/. Run: npm run build
 const fs = require('fs'), path = require('path');
 const src = p => path.join(__dirname, 'src', p);
-const pieces = JSON.parse(fs.readFileSync(src('data/pieces.json'), 'utf8'));
+const pieces = require('./src/pieces.cjs');
 const logo = 'data:image/png;base64,' + fs.readFileSync(src('data/logo.png')).toString('base64');
 const bookCover = 'data:image/webp;base64,' + fs.readFileSync(src('data/white_pawn/cover.b64'), 'utf8').trim();
 
@@ -26,7 +26,8 @@ const data = bookData +
   '\nconst PIECES=' + JSON.stringify(pieces) + ';\nconst LOGO="' + logo + '";\nconst BOOK_COVER="' + bookCover + '";';
 const appCode = fs.readFileSync(src('workbook_app.js'), 'utf8');
 // A replacement function preserves literal dollar signs in application code.
-const combinedAppCode = appCode.replace('/*PLATFORM_TEXT*/', () => fs.readFileSync(src('platform-text.js'), 'utf8'))
+const combinedAppCode = appCode.replace('/*BOARD_MOTION*/', () => fs.readFileSync(src('board-motion.js'), 'utf8'))
+  .replace('/*PLATFORM_TEXT*/', () => fs.readFileSync(src('platform-text.js'), 'utf8'))
   .replace('/*PLATFORM_SHELL*/', () => fs.readFileSync(src('shell.js'), 'utf8'));
 // Fail the build immediately if the browser application contains a syntax error.
 new Function(combinedAppCode);

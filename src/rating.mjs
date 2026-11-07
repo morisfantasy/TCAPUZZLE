@@ -10,6 +10,9 @@ const dpFromHalf = [
   149,158,166,175,184,193,202,211,220,230,240,251,262,273,284,296,
   309,322,336,351,366,383,401,422,444,470,501,538,589,677,800
 ];
+export function performanceDifference(percent) {
+  return Math.sign(percent - 50) * dpFromHalf[Math.abs(percent - 50)];
+}
 export const isRating = value => Number.isSafeInteger(+value) && +value >= 1400;
 export const isGame = game => isRating(game.opponent) && [0, 0.5, 1].includes(game.score);
 
@@ -65,7 +68,7 @@ export function initialRating(events, asOf) {
   const total = count + 2;
   const average = (included.reduce((sum, game) => sum + Number(game.opponent), 3600)) / total;
   const percent = Math.round(100 * (score + 1) / total);
-  const dp = Math.sign(percent - 50) * dpFromHalf[Math.abs(percent - 50)];
+  const dp = performanceDifference(percent);
   const value = count ? Math.min(2200, Math.round(average + dp)) : null;
   const eligible = count >= 5 && score > 0 && value >= 1400;
   return { count, score, value, average, percent, dp, eligible, zeroGames, outside };

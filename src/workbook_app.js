@@ -544,16 +544,19 @@ function parseFen(fen){
   rows.forEach((row,ri)=>{let f=0; for(const c of row){if(/\d/.test(c)){f+=+c;}else{map['abcdefgh'[f]+(8-ri)]=c;f++;}}});
   return map;
 }
+/*BOARD_MOTION*/
 function pieceSVG(p){ return PIECES[p]||''; }
 function boardHtml(ex,interactive=true,sel=[],visualMove=null){
-  const n=ex.size||8, files='abcdefghi'.slice(0,n), base=ex.size===9?(ex.pieces||{}):parseFen(ex.fen), map=Object.assign({},base), selected=new Set(sel);
-  if(visualMove && n===8 && visualMove.from && visualMove.to && map[visualMove.from]){
-    let p=map[visualMove.from]; delete map[visualMove.from];
-    if(visualMove.promo){
-      const white=p===p.toUpperCase(), code={queen:'q',rook:'r',bishop:'b',knight:'n'}[visualMove.promo]||'q';
-      p=white?code.toUpperCase():code;
+  const n=ex.size||8, files='abcdefghi'.slice(0,n), base=ex.size===9?(ex.pieces||{}):parseFen(ex.fen), selected=new Set(sel);
+  let map=base;
+  if(visualMove && n===8 && ex.fen) {
+    const game=new MiniChess.Game(ex.fen);
+    const promo={queen:'q',rook:'r',bishop:'b',knight:'n'}[visualMove.promo];
+    const played=game.move({from:visualMove.from,to:visualMove.to,promo});
+    if(played) {
+      map=parseFen(game.fen());
+      if(played.promo && !promo)map[visualMove.to]=base[visualMove.from];
     }
-    map[visualMove.to]=p;
   }
   let h='<div class="wb-board '+(ex.reversedColors?'reversed':'')+'" style="--n:'+n+'">';
   for(let row=n;row>=1;row--)for(let fi=0;fi<n;fi++){
@@ -595,9 +598,15 @@ function renderExercise(id){
 
   const boardWrap=$('#exerciseBoard'), controls=$('#controls'), help=$('#help'), fb=$('#feedback');
   const tutBtn=$('#openTutorial'); if(tutBtn)tutBtn.onclick=()=>openTutorial(ex);
-  function paintBoard(){
+  let displayedMove=null;
+  function paintBoard(dragged=false){
     const visual=(ex.type==='move'||ex.type==='moveguard')&&state.from&&state.to?{from:state.from,to:state.to,promo:state.promo}:null;
+    BoardMotion.cancel(boardWrap);
+    const edge=visual && !displayedMove?visual:!visual && displayedMove?displayedMove:null;
+    const before=edge?BoardMotion.snapshot(boardWrap):null;
     boardWrap.innerHTML=boardHtml(ex,true,[...state.selected],visual);
+    if(edge) BoardMotion.play(boardWrap,before,edge,!visual,dragged);
+    displayedMove=visual;
     bindBoard();
     if((ex.type==='move'||ex.type==='moveguard')&&state.from&&!state.to) showMoveHints();
   }
@@ -621,12 +630,12 @@ function renderExercise(id){
     showMoveHints();
     renderControls();
   }
-  function completeDraggedMove(from,to){
+  function completeMove(from,to,dragged=false){
     const lm=state.legalMoves.find(m=>m.from===from&&m.to===to);
     if(!lm)return false;
     state.from=from;state.to=to;state.guard=null;state.promo=lm.promo?null:state.promo;state.legalMoves=[];state.selected=new Set([to]);
     if(ex.type==='moveguard')help.textContent=t('selectGuard'); else help.textContent='';
-    paintBoard();renderControls();rebindDirect();
+    paintBoard(dragged);renderControls();rebindDirect();
     return true;
   }
   function bindMoveBoard(){
@@ -635,11 +644,11 @@ function renderExercise(id){
     $$('.wb-sq',boardWrap).forEach(cell=>{
       const sq=cell.dataset.sq;
       cell.onclick=e=>{
-        if(e.detail===0)return;
         if(ex.type==='moveguard'&&state.to&&!state.guard){
           state.guard=sq;state.selected.add(sq);paintBoard();return;
         }
         if(state.to)return;
+        if(state.from && completeMove(state.from,sq))return;
         if(original[sq]){
           selectMoveSource(sq);
           state.selected=new Set([sq]);
@@ -649,7 +658,7 @@ function renderExercise(id){
       cell.onpointerdown=e=>{
         if(ex.type==='moveguard'&&state.to)return;
         if(state.to)return;
-        if(!original[sq])return;
+        if(!original[sq] || state.legalMoves.some(m=>m.to===sq))return;
         const moves=legalMovesFrom(ex,sq); if(!moves.length)return;
         state.from=sq;state.to=null;state.guard=null;state.promo=null;state.legalMoves=moves;state.selected=new Set([sq]);
         showMoveHints();
@@ -665,17 +674,18 @@ function renderExercise(id){
           if(ghost){ghost.style.left=(ev.clientX-rect.width/2)+'px';ghost.style.top=(ev.clientY-rect.height/2)+'px';}
         };
         const up=ev=>{
-          document.removeEventListener('pointermove',move,true);document.removeEventListener('pointerup',up,true);
+          document.removeEventListener('pointermove',move,true);document.removeEventListener('pointerup',up,true);document.removeEventListener('pointercancel',up,true);
           if(ghost)ghost.remove();cell.classList.remove('drag-origin');
+          if(ev.type==='pointercancel')return;
           if(dragging){
             const target=document.elementFromPoint(ev.clientX,ev.clientY)?.closest?.('.wb-sq');
-            if(target&&completeDraggedMove(sq,target.dataset.sq)){e.preventDefault();return;}
+            if(target&&completeMove(sq,target.dataset.sq,true)){e.preventDefault();return;}
             showMoveHints();
           }else{
             state.from=sq;state.legalMoves=moves;state.selected=new Set([sq]);showMoveHints();renderControls();
           }
         };
-        document.addEventListener('pointermove',move,true);document.addEventListener('pointerup',up,true);
+        document.addEventListener('pointermove',move,true);document.addEventListener('pointerup',up,true);document.addEventListener('pointercancel',up,true);
       };
     });
   }
@@ -712,7 +722,7 @@ function renderExercise(id){
     $$('[data-choice]',controls).forEach(b=>b.onclick=()=>{state.choice=b.dataset.choice;$$('[data-choice]',controls).forEach(x=>x.classList.toggle('mint',x===b));});
     $$('[data-toggle]',controls).forEach(b=>b.onclick=()=>{const x=b.dataset.toggle;state.selected.has(x)?state.selected.delete(x):state.selected.add(x);b.classList.toggle('mint',state.selected.has(x));});
     $$('[data-special]',controls).forEach(b=>b.onclick=()=>{state.special=b.dataset.special;$$('[data-special]',controls).forEach(x=>x.classList.toggle('mint',x===b));});
-    $$('[data-promo]',controls).forEach(b=>b.onclick=()=>{state.promo=b.dataset.promo;$$('[data-promo]',controls).forEach(x=>x.classList.toggle('mint',x===b));});
+    $$('[data-promo]',controls).forEach(b=>b.onclick=()=>{state.promo=b.dataset.promo;paintBoard();$$('[data-promo]',controls).forEach(x=>x.classList.toggle('mint',x===b));});
     const chk=$('#checkEx'); if(chk)chk.onclick=checkAnswer;
   }
   function result(ok,neutral=false){

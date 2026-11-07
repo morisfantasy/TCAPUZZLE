@@ -1,3 +1,5 @@
+import { mountNorms, resetNormView } from './norm-ui.mjs';
+import { normLanguage } from './norm-text.mjs';
 import { initialRating, ratingPeriod, isRating } from './rating.mjs';
 
 const currentMonth = () => {
@@ -11,9 +13,9 @@ const fresh = () => ({
   initial: { asOf: currentMonth(), events: [event(currentMonth())] }
 });
 let state = fresh(), mode = 'change';
-export function resetCalculator() { state = fresh(); mode = 'change'; }
+export function resetCalculator() { state = fresh(); mode = 'change'; resetNormView(); }
 
-export function mountCalculator(root, { tr, icon, locale }) {
+export function mountCalculator(root, { tr, icon, locale, user }) {
   const f = number => new Intl.NumberFormat(locale, {maximumFractionDigits: 2, useGrouping:false}).format(number);
   const signed = number => (number > 0 ? '+' : '') + f(number);
   const tone = number => number > 0 ? 'gain' : number < 0 ? 'loss' : '';
@@ -36,8 +38,14 @@ export function mountCalculator(root, { tr, icon, locale }) {
   }
   function render() {
     const r = state.change, u = state.initial;
-    root.innerHTML = '<section class="tool-title"><div class="title-icon">' + icon('calculator') + '</div><div><p>' + tr('standard') + '</p><h1>' + tr('fideCalc') + '</h1></div></section>' +
-      '<div class="mode-tabs" aria-label="' + tr('fideCalc') + '">' + ['initial','change'].map(key => '<button data-mode="' + key + '" aria-pressed="' + (mode===key) + '">' + icon(key==='initial'?'flag':'trend') + tr(key) + '</button>').join('') + '</div>' +
+    const header = '<section class="tool-title"><div class="title-icon">' + icon('calculator') + '</div><div><p>' + tr('standard') + '</p><h1>' + tr('fideCalc') + '</h1></div></section>' +
+      '<div class="mode-tabs" aria-label="' + tr('fideCalc') + '">' + ['initial','change','norms'].map(key => '<button data-mode="' + key + '" aria-pressed="' + (mode===key) + '">' + icon(key==='initial'?'flag':key==='norms'?'award':'trend') + (key==='norms'?normLanguage(locale)('norms'):tr(key)) + '</button>').join('') + '</div>';
+    if(mode==='norms') {
+      root.innerHTML=header+'<div class="norm-workspace"></div>';
+      mountNorms(root.querySelector('.norm-workspace'),{locale,icon,user});
+      return;
+    }
+    root.innerHTML=header +
       '<div class="calc-layout"><div class="calc-editor"><section class="tool-panel calc-settings">' +
       (mode === 'change' ? label('own',numberInput('rating',r.rating,tr('own'))) +
         label('kFactor','<select data-field="k" required><option value="" disabled ' + (r.k===null?'selected':'') + '>' + tr('chooseK') + '</option>' + [10,20,40].map(k=>'<option ' + (r.k===k?'selected':'') + '>' + k + '</option>').join('') + '</select>') :
@@ -97,6 +105,7 @@ export function mountCalculator(root, { tr, icon, locale }) {
   }
   const list = ei => mode === 'change' ? state.change.games : state.initial.events[ei].games;
   root.oninput = e => {
+    if(mode==='norms')return;
     const el = e.target, {field,event:ei,index} = el.dataset;
     if (field === 'opponent') list(+ei)[+index].opponent = el.value;
     else if (field === 'rating') state.change.rating = el.value;
@@ -110,6 +119,7 @@ export function mountCalculator(root, { tr, icon, locale }) {
     const b = e.target.closest('button'); if (!b) return;
     const d = b.dataset;
     if (d.mode) { mode = d.mode; render(); }
+    else if (mode==='norms') return;
     else if ('score' in d) {
       list(+d.event)[+d.index].score = +d.score;
       b.parentElement.querySelectorAll('button').forEach(el=>el.setAttribute('aria-pressed',String(el===b)));

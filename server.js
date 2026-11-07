@@ -9,6 +9,7 @@ const ROOT = path.join(__dirname, 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.json': 'application/json' };
 const SRC = path.join(__dirname, 'src');
 const publicAssets = new Map([
+  ...['norms','norm-ui','norm-text','federations'].map(name=>['/assets/'+name+'.mjs',[name+'.mjs',TYPES['.js']]]),
   ['/assets/platform.css', ['platform.css', TYPES['.css']]],
   ['/assets/calculator.mjs', ['calculator.mjs', TYPES['.js']]],
   ['/assets/rating.mjs', ['rating.mjs', TYPES['.js']]]

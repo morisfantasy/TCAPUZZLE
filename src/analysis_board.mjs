@@ -7,7 +7,7 @@ let owner, chapters, index, flipped;
 export function forgetStudy() { owner = null; chapters = null; }
 function view(chapter) { return Object.assign(chapter, { current:0, preferred:new Map() }); }
 
-export function mountAnalysis(root, { tr, esc, icon, pieceSVG, user, denied }) {
+export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, denied }) {
   if (owner !== user || !chapters) {
     owner = user;
     chapters = [view(makeChapter(DEFAULT_POSITION))]; chapters[0].free = true; index = 0; flipped = false;
@@ -58,18 +58,43 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, user, denied }) {
     const x = square.charCodeAt(0)-97, rank = +square[1];
     return [flipped ? 7.5-x : x+.5, flipped ? rank-.5 : 8.5-rank];
   }
+  function arrowPoints(from,to) {
+    const a=coords(from), b=coords(to), dx=Math.abs(a[0]-b[0]), dy=Math.abs(a[1]-b[1]);
+    if ((dx===2 && dy===1) || (dx===1 && dy===2)) return [a,dx===2?[b[0],a[1]]:[a[0],b[1]],b];
+    return [a,b];
+  }
+  function nearStroke(point, points) {
+    return points.slice(1).some(([x,y],i)=>{
+      const [a,b]=points[i], dx=x-a, dy=y-b;
+      const t=Math.max(0,Math.min(1,((point[0]-a)*dx+(point[1]-b)*dy)/(dx*dx+dy*dy)));
+      return Math.hypot(point[0]-a-t*dx,point[1]-b-t*dy)<.23;
+    });
+  }
+  function eraseOrCircle(square,event,color) {
+    const marks=node().marks, box=board.getBoundingClientRect();
+    const p=[8*(event.clientX-box.left)/box.width,8*(event.clientY-box.top)/box.height];
+    let i=marks.findIndex(m=>m.from===square && m.to===square);
+    if (i<0) for(let j=marks.length-1;j>=0;j--) {
+      const m=marks[j];
+      if(m.from!==m.to && nearStroke(p,arrowPoints(m.from,m.to))){i=j;break;}
+    }
+    if(i>=0){marks.splice(i,1);paintMarks();}else toggleMark(square,square,color);
+  }
   function paintMarks() {
     const marks = [...node().marks];
     if (gesture?.draw && gesture.to && gesture.to!==gesture.from) marks.push(gesture);
     const shapes = marks.map(({from,to,color})=>{
       const [x,y] = coords(from), [u,v] = coords(to), ink = colors[color] || colors.G;
       if (from===to) return '<circle cx="' + x + '" cy="' + y + '" r=".42" stroke="' + ink + '" stroke-width=".09" fill="none"/>';
-      return '<line x1="' + x + '" y1="' + y + '" x2="' + u + '" y2="' + v + '" stroke="' + ink + '" stroke-width=".13" stroke-linecap="round" marker-end="url(#arrow' + color + ')"/>';
+      const route=arrowPoints(from,to);
+      if(route.length===3) return '<path data-arrow="knight" d="M'+route.map(pt=>pt.join(' ')).join(' L')+'" fill="none" stroke="'+ink+'" stroke-width=".15" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow'+color+')"/>';
+      return '<line data-arrow="straight" x1="' + x + '" y1="' + y + '" x2="' + u + '" y2="' + v + '" stroke="' + ink + '" stroke-width=".13" stroke-linecap="round" marker-end="url(#arrow' + color + ')"/>';
     }).join('');
     board.querySelector('.board-marks').innerHTML = '<defs>' + Object.entries(colors).map(([key,color])=>
-      '<marker id="arrow' + key + '" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 10 5 0 10 2 5Z" fill="' + color + '"/></marker>').join('') + '</defs>' + shapes;
+      '<marker id="arrow' + key + '" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 10 5 0 10 2 5Z" fill="' + color + '"/></marker>').join('') + '</defs>' + shapes;
   }
   function paintBoard() {
+    motion.cancel(board);
     const targets = new Set(legal.map(m=>m.to)), checked = position.isCheck();
     let html = '';
     for (let row=0; row<8; row++) for (let col=0; col<8; col++) {
@@ -125,12 +150,15 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, user, denied }) {
       }
     }
   }
-  function setPosition(id, scroll=true) {
+  function setPosition(id, scroll=true, dragged=false) {
     if (id==null) return;
     const ch=chapter(), n=ch.nodes[id];
+    const previous=ch.nodes[ch.current], reverse=previous?.parent===id;
+    const edge=scroll && (reverse?previous:n.parent===ch.current?n:null);
+    const before=edge?motion.snapshot(board):null;
     if(n.parent!=null) ch.preferred.set(n.parent,id);
     ch.current=id; position=new Chess(n.fen); selected=null; legal=[];
-    paintBoard(); paintMoves(scroll);
+    paintBoard(); if(edge)motion.play(board,before,edge,reverse,dragged); paintMoves(scroll);
   }
   function navigate(key) {
     const ch=chapter(), current=ch.current;
@@ -145,11 +173,11 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, user, denied }) {
     legal=selected?position.moves({square:selected,verbose:true}):[];
     paintBoard();
   }
-  function play(from,to,promoteTo) {
+  function play(from,to,promoteTo,dragged=false) {
     const choices=position.moves({square:from,verbose:true}).filter(m=>m.to===to);
     if (!choices.length) return false;
     if (choices.some(m=>m.promotion) && !promoteTo) {
-      promotion={from,to};
+      promotion={from,to,dragged};
       $('.promo-choices').innerHTML=['q','r','b','n'].map(v=>'<button class="icon-button" data-promotion="' + v + '" aria-label="' + tr('pieces').split(',')['pnbrqk'.indexOf(v)] + '">' +
         pieceSVG(position.turn()==='w'?v.toUpperCase():v) + '</button>').join('');
       $('#promoDialog').showModal(); return true;
@@ -157,7 +185,7 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, user, denied }) {
     const move=position.move({from,to,promotion:promoteTo});
     const ch=chapter(), existing=node().children.find(id=>ch.nodes[id].san===move.san);
     if (existing==null && !node().children.length && onMainLine(ch.current) && ch.headers.Result) ch.headers.Result='*';
-    const id=existing??appendMove(ch,ch.current,move); setPosition(id); status(''); return true;
+    const id=existing??appendMove(ch,ch.current,move); setPosition(id,true,dragged); status(''); return true;
   }
   function onMainLine(id) {
     const {nodes}=chapter();
@@ -186,7 +214,7 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, user, denied }) {
     const sq=e.target.closest('[data-square]');
     if (!sq || gesture || ![0,2].includes(e.button))return;
     e.preventDefault(); lastFocus=sq.dataset.square;
-    gesture={id:e.pointerId,from:sq.dataset.square,x:e.clientX,y:e.clientY,draw:e.button===2||drawing,color:e.shiftKey?'R':'G'};
+    gesture={id:e.pointerId,from:sq.dataset.square,x:e.clientX,y:e.clientY,time:e.timeStamp,clear:e.altKey,draw:e.button===2||drawing,color:e.shiftKey?'R':'G'};
     board.setPointerCapture(e.pointerId);
   };
   board.onpointermove=e=>{
@@ -205,10 +233,12 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, user, denied }) {
   };
   board.onpointerup=e=>{
     if (!gesture||gesture.id!==e.pointerId)return;
-    const {from,draw,color,ghost}=gesture, to=squareAt(e);
+    const {from,draw,color,ghost,clear,time}=gesture, to=squareAt(e);
     finishGesture(); if(!to)return;
-    if(draw)toggleMark(from,to,color);
-    else if(ghost||from!==to){ if(from!==to)play(from,to); }
+    if(draw && from===to && (clear || (e.pointerType!=='mouse' && e.timeStamp-time>=550))){node().marks=[];paintMarks();}
+    else if(draw && from===to)eraseOrCircle(to,e,color);
+    else if(draw)toggleMark(from,to,color);
+    else if(ghost||from!==to){ if(from!==to)play(from,to,undefined,!!ghost); }
     else tap(to);
   };
   board.onlostpointercapture=board.onpointercancel=finishGesture;
@@ -258,7 +288,7 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, user, denied }) {
   };
   $('.promo-choices').onclick=e=>{
     const b=e.target.closest('[data-promotion]'); if(!b)return;
-    $('#promoDialog').close(); play(promotion.from,promotion.to,b.dataset.promotion);
+    $('#promoDialog').close(); play(promotion.from,promotion.to,b.dataset.promotion,promotion.dragged);
   };
   for(const [button,dialog] of [['#closeImport','#analysisImportModal'],['#closeMove','#moveDialog'],['#closePromo','#promoDialog'],['#closeFen','#fenDialog']]) $(button).onclick=()=>$(dialog).close();
   for(const d of root.querySelectorAll('dialog'))d.addEventListener('click',e=>{ if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close(); });
@@ -309,5 +339,5 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, user, denied }) {
     });
   };
   setupChapter();
-  return ()=>{listeners.abort(); ++importRevision; gesture?.ghost?.remove();};
+  return ()=>{listeners.abort(); motion.cancel(board); ++importRevision; gesture?.ghost?.remove();};
 }

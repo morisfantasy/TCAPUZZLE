@@ -4,6 +4,7 @@ const icons = {
   videos:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 8 6 4-6 4z"/>',
   calculator:'<rect x="5" y="2" width="14" height="20" rx="3"/><path d="M8 7h8M8.5 12h1m5 0h1m-7 5h1m5 0h1"/>',
   analysis:'<path d="m6 15 1-4 3-3-1-4 4 2 3-1 2 4 1 7H8l-2 3h14M5 21h15M13 9h.1"/>',
+  award:'<circle cx="12" cy="8" r="5"/><path d="m8.5 12-2 8 5.5-3 5.5 3-2-8"/>',
   flag:'<path d="M5 21V4c5-3 9 4 14 0v10c-5 4-9-3-14 0"/>',
   trend:'<path d="m3 17 6-6 4 4 8-10m-6 0h6v6"/>', next:'<path d="m9 5 7 7-7 7"/>',
   previous:'<path d="m15 5-7 7 7 7"/>', first:'<path d="m12 6-6 6 6 6m7-12-6 6 6 6"/>',
@@ -81,11 +82,11 @@ async function renderTool(analysis) {
       if(!access.ok)throw Error();
       studyModule=await import('/api/analysis/board.mjs');
       if(version!==renderVersion)return;
-      unmountStudy=studyModule.mountAnalysis(area,{tr,esc,icon,pieceSVG,user:Auth.current().username,denied});
+      unmountStudy=studyModule.mountAnalysis(area,{tr,esc,icon,pieceSVG,motion:BoardMotion,user:Auth.current().username,denied});
     } else {
       ratingModule=await import('/assets/calculator.mjs');
       if(version!==renderVersion)return;
-      ratingModule.mountCalculator(area,{tr,icon,locale:document.documentElement.lang});
+      ratingModule.mountCalculator(area,{tr,icon,locale:document.documentElement.lang,user:Auth.current()?.username});
     }
   } catch { if(version===renderVersion)area.textContent=tr('unavailable'); }
   finally {area.removeAttribute('aria-busy');}
