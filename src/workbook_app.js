@@ -437,7 +437,7 @@ function renderAuth(mode){
     (mode==='login'
       ?'<h2>'+esc(t('welcome'))+'</h2><p class="sub">'+esc(t('loginSub'))+'</p><form id="authForm"><div id="err"></div><div class="field"><label>'+esc(t('username'))+'</label><input id="u" autocomplete="username" required></div><div class="field"><label>'+esc(t('password'))+'</label><input id="p" type="password" autocomplete="current-password" required></div><button class="btn block">'+esc(t('login'))+'</button></form><p style="margin-top:16px;text-align:center;font-weight:700">'+esc(t('newHere'))+' <button class="link" data-mode="signup">'+esc(t('create'))+'</button></p>'
       :'<h2>'+esc(t('createTitle'))+'</h2><p class="sub">'+esc(t('createSub'))+'</p><form id="authForm"><div id="err"></div><div class="field"><label>'+esc(t('firstName'))+'</label><input id="n" autocomplete="given-name" required></div><div class="field"><label>'+esc(t('username'))+'</label><input id="u" autocomplete="username" required><span class="hint">'+esc(t('userHint'))+'</span></div><div class="field"><label>'+esc(t('password'))+'</label><input id="p" type="password" autocomplete="new-password" required><span class="hint">'+esc(t('passHint'))+'</span></div><button class="btn block">'+esc(t('create'))+'</button></form><p style="margin-top:16px;text-align:center;font-weight:700">'+esc(t('already'))+' <button class="link" data-mode="login">'+esc(t('login'))+'</button></p>')+
-    '<a class="auth-calculator" href="#/calculator">'+icon('calculator')+tr('fideCalc')+'</a></div></section><div class="auth-floor"></div></div>';
+    '<a class="auth-calculator" href="#/tools">'+icon('toolsNav')+tr('toolsNav')+'</a></div></section><div class="auth-floor"></div></div>';
   bindLang();
   $$('[data-mode]').forEach(b=>b.onclick=()=>go('#/'+b.dataset.mode));
   $('#authForm').onsubmit=async e=>{
@@ -764,11 +764,14 @@ function renderExercise(id){
 function render(){
   ++renderVersion;
   if(unmountStudy){unmountStudy();unmountStudy=null;}
+  if(unmountCalendar){unmountCalendar();unmountCalendar=null;}
   document.documentElement.lang=({zh:'zh-CN',yue:'zh-HK'})[lang]||lang;
-  const parts=location.hash.replace(/^#\/?/,'').split('/').filter(Boolean);
-  if(!Auth.current()&&parts[0]!=='calculator'){ renderAuth(parts[0]==='signup'?'signup':'login'); return; }
+  const parts=location.hash.split('?')[0].replace(/^#\/?/,'').split('/').filter(Boolean);
+  if(!Auth.current()&&!['tools','calendar','calculator'].includes(parts[0])){ renderAuth(parts[0]==='signup'?'signup':'login'); return; }
   if(!parts[0]||parts[0]==='home')renderHome();
   else if(['courses','videos'].includes(parts[0]))renderCourses();
+  else if(parts[0]==='tools')renderTools();
+  else if(parts[0]==='calendar')renderCalendar(parts[1]);
   else if(parts[0]==='calculator')renderTool(false);
   else if(parts[0]==='analysis'){if(Auth.current()?.isAdmin)renderTool(true);else go('#/home');}
   else if(['library','books'].includes(parts[0]))renderLibrary();
@@ -778,8 +781,8 @@ function render(){
   else renderHome();
   window.scrollTo({top:0,left:0,behavior:'auto'});
 }
-if(!location.hash && ['/analysis','/analysis/','/calculator','/calculator/'].includes(location.pathname)) {
-  history.replaceState(null,'','/#'+location.pathname.replace(/\/$/,''));
+if(!location.hash && (/^\/(analysis|calculator|tools)\/?$/.test(location.pathname) || /^\/calendar(?:\/[1-9]\d{0,8})?\/?$/.test(location.pathname))) {
+  history.replaceState(null,'','/#'+location.pathname.replace(/\/$/,'')+location.search);
 }
 window.addEventListener('pageshow', e=>{if(e.persisted)Auth.restore().finally(render);});
 Auth.restore().finally(render);

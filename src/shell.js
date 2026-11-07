@@ -4,6 +4,9 @@ const icons = {
   videos:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 8 6 4-6 4z"/>',
   calculator:'<rect x="5" y="2" width="14" height="20" rx="3"/><path d="M8 7h8M8.5 12h1m5 0h1m-7 5h1m5 0h1"/>',
   analysis:'<path d="m6 15 1-4 3-3-1-4 4 2 3-1 2 4 1 7H8l-2 3h14M5 21h15M13 9h.1"/>',
+  toolsNav:'<path d="M4 8h16v12H4zM8 8V5h8v3M4 12c4 3 12 3 16 0M10 13h4"/>',
+  calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18M7 14h2m3 0h2m-7 3h2"/>',
+  search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',
   award:'<circle cx="12" cy="8" r="5"/><path d="m8.5 12-2 8 5.5-3 5.5 3-2-8"/>',
   flag:'<path d="M5 21V4c5-3 9 4 14 0v10c-5 4-9-3-14 0"/>',
   trend:'<path d="m3 17 6-6 4 4 8-10m-6 0h6v6"/>', next:'<path d="m9 5 7 7-7 7"/>',
@@ -22,16 +25,14 @@ const icons = {
 function icon(name) { return '<svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + icons[name] + '</svg>'; }
 
 function sections() {
-  const items=[['home','home','home'],['library','booksNav','books'],['videos','videos','videos'],['calculator','calculator','calculator']];
-  if(Auth.current()?.isAdmin)items.push(['analysis','analysis','analysis']);
-  return items;
+  return [['home','home','home'],['library','booksNav','books'],['videos','videos','videos'],['tools','toolsNav','toolsNav']];
 }
 function routeName() {
-  return location.hash.replace(/^#\/?/,'').split('/')[0] || 'home';
+  return location.hash.split('?')[0].replace(/^#\/?/,'').split('/')[0] || 'home';
 }
 function shell(inner) {
   const user=Auth.current();
-  const current = ({book:'library',play:'library',books:'library',courses:'videos'})[routeName()] || routeName();
+  const current = ({book:'library',play:'library',books:'library',courses:'videos',calculator:'tools',analysis:'tools',calendar:'tools'})[routeName()] || routeName();
   const nav=sections().map(([path,key,glyph])=>'<a href="#/' + path + '"' + (path===current?' aria-current="page"':'') + '>' + icon(glyph) + '<span>' + tr(key) + '</span></a>').join('');
   return '<div class="platform-shell"><aside class="platform-rail"><a class="platform-brand" href="#/home" aria-label="The Chess Academy"><img src="' + LOGO + '" alt="The Chess Academy"></a>' +
     '<nav class="platform-nav" aria-label="TCA">' + nav + '</nav></aside><div class="platform-body">' +
@@ -40,7 +41,7 @@ function shell(inner) {
       '<a class="soft-button" href="#/login">' + esc(t('login')) + '</a>') + '</div></header>' +
     '<main class="platform-main" id="platformMain">' + inner + '</main></div></div>';
 }
-let studyModule, ratingModule, unmountStudy, renderVersion=0;
+let studyModule, ratingModule, unmountStudy, unmountCalendar, renderVersion=0;
 function bindShell() {
   bindLang();
   const logout=$('#logout');
@@ -51,13 +52,33 @@ function bindShell() {
 function renderHome() {
   const stats=stat(ALL), upcoming=ALL.find(ex=>rec(keyOf(ex.id))?.s!=='c') || ALL[0];
   const tools=sections().slice(1);
-  const desc={library:bookDescription(),videos:tr('videosEmpty'),calculator:tr('eloDesc'),analysis:tr('coachDesc')};
+  const desc={library:bookDescription(),videos:tr('videosEmpty'),tools:tr(Auth.current()?.isAdmin?'toolsCoachDesc':'toolsPublicDesc')};
   root.innerHTML=shell('<section class="home-heading"><h1>' + tr('workspace') + '</h1></section>' +
     '<section class="training-feature"><div><p>' + tr('workbook') + '</p><h2>White Pawn</h2><span>' + tr('solvedCount',stats.c) + '</span><a class="feature-action" href="#/play/' + upcoming.id + '">' + tr('continueBook') + icon('arrow') + '</a></div>' +
     '<img src="' + BOOK_COVER + '" alt="White Pawn"></section><div class="section-grid">' +
     tools.map(([path,key,glyph])=>'<a class="section-tile tile-' + path + '" href="#/' + path + '"><div class="tile-head"><span>' + icon(glyph) + '</span>' + icon('arrow') + '</div><h2>' + tr(key) + '</h2><p>' + esc(desc[path]) + '</p></a>').join('') + '</div>' +
     (Auth.current()?.isSuperadmin?superadminUsersMarkup():''));
   bindShell(); if(Auth.current()?.isSuperadmin)bindSuperadminUsers();
+}
+function renderTools() {
+  const entries=[['calendar','chessCalendar','calendarDesc'],['calculator','fideCalc','eloDesc']];
+  if(Auth.current()?.isAdmin)entries.push(['analysis','analysis','coachDesc']);
+  root.innerHTML=shell('<section class="tool-title"><div class="title-icon">'+icon('toolsNav')+'</div><h1>'+tr('toolsNav')+'</h1></section>'+
+    '<div class="section-grid tools-grid">'+entries.map(([route,title,desc])=>'<a class="section-tile tile-'+route+'" data-tool-card="'+route+'" href="#/'+route+'"><div class="tile-head"><span>'+
+      icon(route)+'</span>'+icon('arrow')+'</div><h2>'+tr(title)+'</h2><p>'+tr(desc)+'</p></a>').join('')+'</div>');
+  bindShell();
+}
+function toolsCrumb() {
+  return '<a class="tools-crumb" href="#/tools">'+icon('previous')+tr('toolsNav')+'</a>';
+}
+async function renderCalendar(id) {
+  const version=renderVersion;
+  root.innerHTML=shell(toolsCrumb()+'<div id="calendarRoot" aria-busy="true">'+tr('busy')+'</div>');bindShell();
+  const area=$('#calendarRoot');
+  try {
+    const {mountCalendar}=await import('/assets/calendar.mjs');
+    if(version===renderVersion)unmountCalendar=mountCalendar(area,{id,icon,locale:document.documentElement.lang});
+  } catch {if(version===renderVersion)area.textContent=tr('unavailable');}
 }
 function renderCourses() {
   root.innerHTML=shell('<section class="tool-title"><div class="title-icon">' + icon('videos') + '</div><h1>' + tr('videos') + '</h1></section><section class="tool-panel video-empty">' +
@@ -66,7 +87,7 @@ function renderCourses() {
 }
 async function renderTool(analysis) {
   const version=renderVersion;
-  root.innerHTML=shell('<div id="toolRoot" aria-busy="true">' + tr('busy') + '</div>');
+  root.innerHTML=shell(toolsCrumb()+'<div id="toolRoot" aria-busy="true">' + tr('busy') + '</div>');
   bindShell();
   const area=$('#toolRoot');
   async function denied() {

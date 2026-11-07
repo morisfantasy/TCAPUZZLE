@@ -12,6 +12,7 @@
   "dependencies": {
     "@mliebelt/pgn-parser": "1.4.19",
     "chess.js": "1.4.0",
+    "node-html-parser": "7.0.1",
     "pg": "^8.13.1"
   },
   "engines": {

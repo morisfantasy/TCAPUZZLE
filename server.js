@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { createCalendar } = require('./src/fide-calendar.cjs');
 const { Pool } = require('pg');
 
 const PORT = process.env.PORT || 3000;
@@ -9,12 +10,13 @@ const ROOT = path.join(__dirname, 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.json': 'application/json' };
 const SRC = path.join(__dirname, 'src');
 const publicAssets = new Map([
-  ...['norms','norm-ui','norm-text','federations'].map(name=>['/assets/'+name+'.mjs',[name+'.mjs',TYPES['.js']]]),
+  ...['norms','norm-ui','norm-text','federations','calendar','calendar-text'].map(name=>['/assets/'+name+'.mjs',[name+'.mjs',TYPES['.js']]]),
   ['/assets/platform.css', ['platform.css', TYPES['.css']]],
   ['/assets/calculator.mjs', ['calculator.mjs', TYPES['.js']]],
   ['/assets/rating.mjs', ['rating.mjs', TYPES['.js']]]
 ]);
 const coachAssets = new Map([
+  ['/api/analysis/study-arrows.mjs', path.join(SRC, 'study-arrows.mjs')],
   ['/api/analysis/board.mjs', path.join(SRC, 'analysis_board.mjs')],
   ['/api/analysis/study.mjs', path.join(SRC, 'study.mjs')],
   ['/api/analysis/rules.mjs', path.resolve(path.dirname(require.resolve('chess.js')), '../esm/chess.js')]
@@ -24,6 +26,18 @@ if (!DATABASE_URL) throw new Error('DATABASE_URL is required');
 
 const pool = new Pool({ connectionString: DATABASE_URL });
 const SESSION_DAYS = 30;
+const calendar=createCalendar({
+  async readCache(key) {
+    const result=await pool.query('SELECT payload, updated_at FROM fide_calendar_cache WHERE cache_key=$1',[key]);
+    const row=result.rows[0];
+    return row?{value:row.payload,updatedAt:row.updated_at.toISOString()}:null;
+  },
+  async writeCache(key,snapshot) {
+    await pool.query(`INSERT INTO fide_calendar_cache(cache_key,payload,updated_at) VALUES ($1,$2::jsonb,$3)
+      ON CONFLICT(cache_key) DO UPDATE SET payload=EXCLUDED.payload,updated_at=EXCLUDED.updated_at
+      WHERE fide_calendar_cache.updated_at<=EXCLUDED.updated_at`,[key,JSON.stringify(snapshot.value),snapshot.updatedAt]);
+  }
+});
 
 async function initDb() {
   await pool.query(`
@@ -34,6 +48,9 @@ async function initDb() {
       password_hash TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       role VARCHAR(16) NOT NULL DEFAULT 'user'
+    );
+    CREATE TABLE IF NOT EXISTS fide_calendar_cache (
+      cache_key TEXT PRIMARY KEY, payload JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL
     );
     CREATE TABLE IF NOT EXISTS sessions (
       token_hash CHAR(64) PRIMARY KEY,
@@ -236,7 +253,7 @@ async function handleApi(req, res, pathname) {
 }
 
 const server = http.createServer(async (req, res) => {
-  const pathname = new URL(req.url, 'http://localhost').pathname;
+  const url=new URL(req.url,'http://localhost'), pathname=url.pathname;
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
   if (publicAssets.has(pathname) && req.method === 'GET') {
@@ -245,12 +262,21 @@ const server = http.createServer(async (req, res) => {
     catch { return json(res, 500, { error: 'Asset could not be loaded.' }); }
   }
   if (pathname === '/analysis' || pathname === '/analysis/') return handleApi(req, res, '/analysis');
+  if(pathname==='/api/calendar' || pathname.startsWith('/api/calendar/events/')) {
+    if(req.method!=='GET')return json(res,405,{error:'Method not allowed'});
+    try {
+      const result=pathname==='/api/calendar'?await calendar.month(url.searchParams.get('month')):await calendar.detail(pathname.slice('/api/calendar/events/'.length));
+      return json(res,200,result,{'Cache-Control':result.stale?'no-cache':'public, max-age=60'});
+    } catch(e) {
+      return json(res,e.status||502,{error:e.status===400?'Invalid calendar request':'FIDE calendar unavailable'});
+    }
+  }
   if (pathname.startsWith('/api/')) return handleApi(req, res, pathname);
   if (pathname === '/health') { res.writeHead(200); return res.end('ok'); }
 
   // The public client only has one entry point. Coach modules are served above.
   if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });
-  if (!['/', '/index.html', '/calculator', '/calculator/'].includes(pathname)) return json(res, 404, { error: 'Not found' });
+  if (!['/', '/index.html', '/calculator', '/calculator/', '/tools','/tools/'].includes(pathname) && !/^\/calendar(?:\/[1-9]\d{0,8})?\/?$/.test(pathname)) return json(res, 404, { error: 'Not found' });
   try { await sendFile(res, path.join(ROOT, 'index.html'), TYPES['.html'], 'no-cache'); }
   catch { json(res, 500, { error: 'Application could not be loaded.' }); }
 });

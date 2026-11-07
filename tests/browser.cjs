@@ -61,7 +61,14 @@ async function suite() {
     page.setDefaultTimeout(10000);
     page.on('pageerror',error=>errors.push(error.message));
     const $=s=>page.locator(s), click=s=>$(s).click();
-    const nav=route=>click('.platform-nav a[href="#/'+route+'"]');
+    async function nav(route) {
+      if(['calendar','calculator','analysis'].includes(route)) {
+        await click('.platform-nav a[href="#/tools"]');await click('[data-tool-card="'+route+'"]');
+      }else {
+        await click('.platform-nav a[href="#/'+route+'"]');
+        if(route==='tools')await page.waitForSelector('[data-tool-card=calendar]');
+      }
+    }
     async function login(username) {
       await page.goto(base+'/#/login'); await $('#u').fill(username);await $('#p').fill(password);await click('#authForm button');
       await page.waitForSelector('.feature-action');
@@ -69,18 +76,65 @@ async function suite() {
     const logout=async()=>{await click('#logout');await page.waitForSelector('#authForm');};
     const request=(pathname,body)=>body?context.request.post(base+pathname,{data:body}):context.request.get(base+pathname);
     async function gate(status) {
-      for(const endpoint of ['/analysis','/api/analysis/access','/api/analysis/board.mjs','/api/analysis/rules.mjs','/api/analysis/study.mjs'])
+      for(const endpoint of ['/analysis','/api/analysis/access','/api/analysis/board.mjs','/api/analysis/rules.mjs','/api/analysis/study.mjs','/api/analysis/study-arrows.mjs'])
         assert.equal((await request(endpoint)).status(),status,endpoint);
       assert.equal((await request('/api/analysis/import',{pgn:'1. e4 *'})).status(),status);
     }
     async function snap(name) {
       if(process.env.TCA_TEST_SCREENSHOTS) {
         await fs.mkdir(process.env.TCA_TEST_SCREENSHOTS,{recursive:true});
-        await page.screenshot({path:path.join(process.env.TCA_TEST_SCREENSHOTS,name+'.png'),fullPage:true});
+        await page.screenshot({path:path.join(process.env.TCA_TEST_SCREENSHOTS,name+'.png'),fullPage:true,timeout:35000,animations:'disabled'});
       }
     }
     await gate(401);
+    const countries={ESP:['Spain','ES','Europe'],HKG:['Hong Kong, China','HK','Asia'],FRA:['France','FR','Europe']};
+    const countryEvents=[
+      [901001,'Hong Kong Rapid Open','Hong Kong','HKG','rapid','2026-10-31','2026-11-02'],
+      [901002,'Open de la Ría','A Coruña','ESP','standard','2026-11-02','2026-11-08'],
+      [901003,'Lyon Blitz','Lyon','FRA','blitz','2026-11-07','2026-11-07']
+    ];
+    const fixtures=countryEvents.map(([id,title,city,country,tempo,start,end])=>({id,title,city,country,tempos:[tempo],start,end}));
+    const detail={...fixtures[1],fields:[{key:'city',value:'A Coruña'},{key:'rounds',value:'7'}],links:[],organizers:[]};
+    for(const [key,value] of [['federations',countries],['month:2026-11',fixtures],['month:2026-12',[]],['event:901002',detail]]) {
+      await db.query('INSERT INTO fide_calendar_cache(cache_key,payload,updated_at) VALUES($1,$2::jsonb,NOW())',[key,JSON.stringify(value)]);
+    }
+    await page.goto(base+'/tools');await page.waitForSelector('[data-tool-card]');
+    assert.deepEqual(await $('[data-tool-card]').evaluateAll(items=>items.map(a=>a.dataset.toolCard)),['calendar','calculator']);
+    await page.goto(base+'/calendar?month=2026-11');await page.waitForSelector('.cal-event');
+    const agendaIds=()=>$('.cal-event').evaluateAll(items=>items.map(a=>a.dataset.eventId));
+    assert.deepEqual(await agendaIds(),['901001','901002','901003']);
+    assert.equal(await $('[data-day="2026-11-02"] .cal-day-count').innerText(),'2');
+    await snap('desktop-calendar');await click('[data-day="2026-11-02"]');assert.deepEqual(await agendaIds(),['901001','901002']);
+    await click('[data-cal-action=whole]');await $('[data-filter=region]').selectOption('Asia');
+    assert.deepEqual(await agendaIds(),['901001']);assert.equal(await $('[data-filter=country] option[value=ESP]').count(),0);
+    await $('[data-filter=country]').selectOption('HKG');await $('[data-filter=region]').selectOption('Europe');
+    assert.equal(await $('[data-filter=country]').inputValue(),'');await $('[data-filter=country]').selectOption('ESP');
+    await $('[data-filter=tempo]').selectOption('blitz');await $('.cal-empty').waitFor();
+    await $('[data-filter=tempo]').selectOption('standard');await $('[data-filter=q]').fill('coruna ria');
+    assert.deepEqual(await agendaIds(),['901002']);await click('[data-event-id="901002"]');
+    await page.getByRole('heading',{name:'Open de la Ría'}).waitFor();assert.match(await $('.cal-facts').innerText(),/Rounds\s*7/i);
+    assert.equal(await $('.cal-detail .cal-official').getAttribute('href'),'https://calendar.fide.com/calendar.php?id=901002');
+    await page.reload();await page.waitForSelector('.cal-detail');await click('.cal-back');await page.waitForSelector('.cal-event');
+    assert.equal(await $('[data-filter=q]').inputValue(),'coruna ria');assert.equal(await $('[data-filter=country]').inputValue(),'ESP');
+    await click('[data-cal-action=clear]');await click('#calNext');await $('.cal-empty').waitFor();assert.equal(await $('#calMonth').inputValue(),'2026-12');
+    await click('#calPrevious');await page.waitForSelector('.cal-event');
+    await page.setViewportSize({width:320,height:844});
+    for(const lang of ['es','fr','zh','yue','en']) {
+      await click('.lang-button');await click('[data-lang="'+lang+'"]');await page.waitForSelector('.cal-event');
+      assert.equal(await $('[data-day]').count(),30);
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Calendar overflow in '+lang);
+    }
+    await snap('mobile-calendar');await page.setViewportSize({width:1440,height:940});
+    let attempts=0;
+    await page.route('**/api/calendar?month=2090-02',route=>++attempts===1?route.fulfill({status:502,body:'unavailable'}):
+      route.fulfill({json:{month:'2090-02',events:[],countries,stale:true,updatedAt:'2026-11-01T00:00:00Z'}}));
+    await page.goto(base+'/calendar?month=2090-02&day=2090-02-31');await click('[data-cal-action=retry]');
+    await $('.cal-empty').waitFor();assert.ok(await $('.cal-sync.stale').isVisible());assert.equal(await $('[data-day][aria-pressed=true]').count(),0);
+    await page.unroute('**/api/calendar?month=2090-02');
+    for(const path of ['/api/calendar?month=9999-01','/api/calendar/events/abc'])assert.equal((await request(path)).status(),400);
+    console.log('PASS public Tools and calendar, combined filters, cross-month date, detail link, back/reload, month navigation, empty/stale/retry, five mobile languages');
     await login('pupil');assert.equal(await $('.platform-nav a').count(),4);await gate(403);
+    await nav('tools');assert.equal(await $('[data-tool-card=analysis]').count(),0);
     assert.equal((await request('/api/superadmin/users')).status(),403);
     await nav('library');await click('a[href="#/book/1"]');await click('a[href="#/book/1/ch/0"]');
     await click('a[href="#/play/1"]');await page.waitForSelector('#exerciseBoard .wb-sq');
@@ -93,8 +147,10 @@ async function suite() {
     await page.waitForSelector('[data-user-admin="coach"][data-grant="false"]');await logout();
     await page.goto(base+'/analysis');await $('#u').fill('coach');await $('#p').fill(password);await click('#authForm button');
     await page.waitForSelector('[data-square="e2"]');
-    assert.equal(await $('.platform-nav a').count(),5);
+    assert.deepEqual(await $('.platform-nav a').evaluateAll(items=>items.map(a=>a.hash)),['#/home','#/library','#/videos','#/tools']);
+    assert.equal(await $('.platform-nav [aria-current=page]').getAttribute('href'),'#/tools');
     assert.equal((await request('/api/superadmin/users/role',{username:'pupil',isAdmin:true})).status(),403);
+    await nav('tools');assert.equal(await $('[data-tool-card]').count(),3);await click('[data-tool-card=analysis]');await page.waitForSelector('.study-square');
     console.log('PASS account roles, owner promotion, book, chapter, workbook, tutorial, progress, videos');
 
     const sq=(square)=>$('[data-square="'+square+'"]');
@@ -108,16 +164,30 @@ async function suite() {
     }
     async function end(){await click('#analysisEnd');}
     await ingest('1. e4 e5 2. Nf3 *');assert.equal(await $('.notation-row').count(),2);
-    await click('#analysisNext');assert.equal(await piece('e4'),'P');await page.keyboard.press('ArrowUp');assert.equal(await piece('f3'),'N');
-    await page.keyboard.press('ArrowLeft');assert.equal(await piece('g1'),'N');await page.keyboard.press('ArrowDown');assert.equal(await piece('e2'),'P');
+    await click('#analysisNext');assert.equal(await piece('e4'),'P');await page.keyboard.press('End');assert.equal(await piece('f3'),'N');
+    await page.keyboard.press('ArrowLeft');assert.equal(await piece('g1'),'N');await page.keyboard.press('Home');assert.equal(await piece('e2'),'P');
     await page.keyboard.press('ArrowRight');assert.equal(await piece('e4'),'P');
     const opera='[Event "Paris"]\n[White "Morphy"]\n[Black "Duke and Count"]\n[Result "1-0"]\n\n1. e4 e5 2. Nf3 d6 3. d4 Bg4 4. dxe5 Bxf3 5. Qxf3 dxe5 6. Bc4 Nf6 7. Qb3 Qe7 8. Nc3 c6 9. Bg5 b5 10. Nxb5 cxb5 11. Bxb5+ Nbd7 12. O-O-O Rd8 13. Rxd7 Rxd7 14. Rd1 Qe6 15. Bxd7+ Nxd7 16. Qb8+ Nxb8 17. Rd8# 1-0';
     await ingest(opera,'complete.pgn');await end();assert.equal(await piece('d8'),'R');assert.match(await $('#positionTurn').innerText(),/Checkmate/);assert.equal(await $('.san').count(),33);
     await snap('desktop-analysis');
     const branch='[Event "TCA"]\n[ChapterName "Italian"]\n\n{Start note} 1. e4! {Claim the centre [%cal Ge2e4]} (1. d4 d5 (1... Nf6)) e5 2. Nf3 *';
-    await ingest(branch);assert.match(await $('#currentNote').innerText(),/Start note/);await click('#analysisNext');
+    await ingest(branch);assert.match(await $('#currentNote').innerText(),/Start note/);
+    const boardFen=()=>$('#analysisBoard').getAttribute('data-fen');
+    const rootFen=await boardFen(), choice=$('#branchPicker [aria-selected=true]');
+    await click('#analysisNext');assert.match(await choice.innerText(),/e4/);
+    await page.keyboard.press('ArrowDown');assert.match(await choice.innerText(),/d4/);assert.equal(await boardFen(),rootFen);
+    await page.keyboard.press('Escape');assert.equal(await boardFen(),rootFen);assert.equal(await $('#branchPicker [role=listbox]').count(),0);
+    await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
+    assert.equal(await piece('d4'),'P');const d4Fen=await boardFen();
+    await page.keyboard.press('ArrowRight');assert.match(await choice.innerText(),/d5/);
+    await page.keyboard.press('ArrowDown');assert.match(await choice.innerText(),/Nf6/);assert.equal(await boardFen(),d4Fen);
+    await page.keyboard.press('ArrowRight');assert.equal(await piece('f6'),'n');
+    await page.keyboard.press('ArrowUp');assert.match(await choice.innerText(),/d5/);
+    await page.keyboard.press('Enter');assert.equal(await piece('d5'),'p');assert.equal(await piece('g8'),'n');
+    await page.keyboard.press('Home');await page.keyboard.press('ArrowDown');assert.match(await choice.innerText(),/e4/);
+    await page.keyboard.press('Enter');
     assert.match(await $('#currentNote').innerText(),/Claim the centre/);assert.match(await $('.san.current').innerText(),/!/);
-    assert.equal(await $('.board-marks line').count(),1);
+    assert.equal(await $('.board-marks [data-arrow=straight]').count(),1);
     await $('.branch-move').filter({hasText:'d4'}).click();assert.equal(await piece('d4'),'P');
     await $('.branch-move').filter({hasText:'Nf6'}).click();assert.equal(await piece('f6'),'n');
     await click('#analysisStart'); await sq('c2').click();assert.equal(await $('.study-square.legal').count(),2);
@@ -131,7 +201,7 @@ async function suite() {
     }
     await drag('g8','f6','right');await sq('e5').click({button:'right'});
     assert.equal(await $('.board-marks circle').count(),1);assert.equal(await $('.board-marks [data-arrow]').count(),2);assert.equal(await $('.board-marks [data-arrow=knight]').count(),1);
-    await click('#analysisFlip');assert.equal(await $('.study-square').first().getAttribute('data-square'),'h1');
+    await snap('desktop-arrows');await click('#analysisFlip');assert.equal(await $('.study-square').first().getAttribute('data-square'),'h1');
     await click('#analysisMoreButton');assert.ok(await $('#analysisMoreMenu').isVisible());await click('[data-tool="clearMarks"]');
     assert.equal(await $('.board-marks circle,.board-marks [data-arrow]').count(),0);
     const annotationFen=await $('#analysisBoard').getAttribute('data-fen');
@@ -139,11 +209,8 @@ async function suite() {
       for(const dest of ['b3','b5','c2','c6','e2','e6','f3','f5']) {
         await drag('d4',dest,'right');
         const path=$('.board-marks [data-arrow=knight]');assert.equal(await path.count(),1);
-        const nums=(await path.getAttribute('d')).match(/[0-9.]+/g).map(Number);
-        assert.equal(nums.length,6);
-        const [x,y,m,n,u,v]=nums;
-        assert.ok((x===m && y!==n && n===v && m!==u)||(y===n && x!==m && m===u && n!==v));
-        assert.ok(await path.getAttribute('marker-end'));
+        const outline=await path.getAttribute('d');assert.match(outline,/^M.* Q.* A.* Z$/);
+        assert.equal(await path.getAttribute('marker-end'),null);assert.equal(await $('.board-marks marker').count(),0);
         await sq(dest).click({button:'right'});assert.equal(await path.count(),0);
       }
       await click('#analysisFlip');

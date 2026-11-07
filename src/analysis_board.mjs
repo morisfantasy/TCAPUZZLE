@@ -1,4 +1,5 @@
 import { Chess, DEFAULT_POSITION } from './rules.mjs';
+import { arrowRoute, arrowOutline, nearArrow } from './study-arrows.mjs';
 import { makeChapter, appendMove, prefix, writeChapter } from './study.mjs';
 
 const colors = { G:'#147b50', R:'#b73435', B:'#274bb7', Y:'#a86a00' };
@@ -17,7 +18,7 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
   const node = () => chapter().nodes[chapter().current];
   const next = (id) => chapter().preferred.get(id) ?? chapter().nodes[id].children[0];
   let position, selected, legal = [], gesture, drawing = false, promotion, targetMove;
-  let importRevision = 0, lastFocus = '';
+  let importRevision = 0, lastFocus = '', branchChoice = null;
   const control = (id, key, glyph) => '<button type="button" id="' + id + '" class="icon-button" title="' + tr(key) + '" aria-label="' + tr(key) + '">' + icon(glyph) + '</button>';
   root.innerHTML = '<section class="tool-title"><div class="title-icon">' + icon('analysis') + '</div><div><h1>' + tr('analysis') + '</h1></div></section>' +
     '<div class="study-layout"><div class="board-column"><div id="analysisBoard" class="study-board" tabindex="-1" aria-label="' + tr('analysis') + '"></div>' +
@@ -27,7 +28,7 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
     '<div class="menu-anchor"><button class="icon-button" id="analysisMoreButton" aria-haspopup="true" aria-controls="analysisMoreMenu" aria-expanded="false" aria-label="' + tr('tools') + '">' + icon('more') + '</button>' +
     '<div class="tool-menu" id="analysisMoreMenu" hidden>' + [['copyFen','copy'],['download','download'],['clearMarks','eraser']].map(([key,i])=>'<button data-tool="' + key + '">' + icon(i) + tr(key) + '</button>').join('') + '</div></div></header>' +
     '<div class="chapter-picker"><label for="analysisChapter">' + tr('chapter') + '</label><select id="analysisChapter"></select><div id="chapterDetails"></div></div>' +
-    '<div class="move-scroll" id="analysisMoveList"></div><div class="study-controls">' +
+    '<div class="move-scroll" id="analysisMoveList"></div><div class="branch-picker" id="branchPicker" hidden></div><div class="study-controls">' +
     control('analysisStart','first','first') + control('analysisPrev','previous','previous') + control('analysisNext','next','next') + control('analysisEnd','last','last') + control('analysisFlip','flip','flip') + '</div>' +
     '<div id="currentNote" class="current-note" hidden></div></aside></div>' +
     '<dialog id="analysisImportModal" class="tool-dialog" aria-labelledby="importTitle"><header><h2 id="importTitle">' + tr('importPgn') + '</h2>' + control('closeImport','close','close') + '</header>' +
@@ -58,25 +59,14 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
     const x = square.charCodeAt(0)-97, rank = +square[1];
     return [flipped ? 7.5-x : x+.5, flipped ? rank-.5 : 8.5-rank];
   }
-  function arrowPoints(from,to) {
-    const a=coords(from), b=coords(to), dx=Math.abs(a[0]-b[0]), dy=Math.abs(a[1]-b[1]);
-    if ((dx===2 && dy===1) || (dx===1 && dy===2)) return [a,dx===2?[b[0],a[1]]:[a[0],b[1]],b];
-    return [a,b];
-  }
-  function nearStroke(point, points) {
-    return points.slice(1).some(([x,y],i)=>{
-      const [a,b]=points[i], dx=x-a, dy=y-b;
-      const t=Math.max(0,Math.min(1,((point[0]-a)*dx+(point[1]-b)*dy)/(dx*dx+dy*dy)));
-      return Math.hypot(point[0]-a-t*dx,point[1]-b-t*dy)<.23;
-    });
-  }
+
   function eraseOrCircle(square,event,color) {
     const marks=node().marks, box=board.getBoundingClientRect();
     const p=[8*(event.clientX-box.left)/box.width,8*(event.clientY-box.top)/box.height];
     let i=marks.findIndex(m=>m.from===square && m.to===square);
     if (i<0) for(let j=marks.length-1;j>=0;j--) {
       const m=marks[j];
-      if(m.from!==m.to && nearStroke(p,arrowPoints(m.from,m.to))){i=j;break;}
+      if(m.from!==m.to && nearArrow(p,arrowRoute(coords(m.from),coords(m.to)))){i=j;break;}
     }
     if(i>=0){marks.splice(i,1);paintMarks();}else toggleMark(square,square,color);
   }
@@ -86,12 +76,10 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
     const shapes = marks.map(({from,to,color})=>{
       const [x,y] = coords(from), [u,v] = coords(to), ink = colors[color] || colors.G;
       if (from===to) return '<circle cx="' + x + '" cy="' + y + '" r=".42" stroke="' + ink + '" stroke-width=".09" fill="none"/>';
-      const route=arrowPoints(from,to);
-      if(route.length===3) return '<path data-arrow="knight" d="M'+route.map(pt=>pt.join(' ')).join(' L')+'" fill="none" stroke="'+ink+'" stroke-width=".15" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow'+color+')"/>';
-      return '<line data-arrow="straight" x1="' + x + '" y1="' + y + '" x2="' + u + '" y2="' + v + '" stroke="' + ink + '" stroke-width=".13" stroke-linecap="round" marker-end="url(#arrow' + color + ')"/>';
+      const route=arrowRoute([x,y],[u,v]);
+      return '<path data-arrow="'+(route.length===3?'knight':'straight')+'" d="'+arrowOutline(route)+'" fill="'+ink+'"/>';
     }).join('');
-    board.querySelector('.board-marks').innerHTML = '<defs>' + Object.entries(colors).map(([key,color])=>
-      '<marker id="arrow' + key + '" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 10 5 0 10 2 5Z" fill="' + color + '"/></marker>').join('') + '</defs>' + shapes;
+    board.querySelector('.board-marks').innerHTML=shapes;
   }
   function paintBoard() {
     motion.cancel(board);
@@ -141,6 +129,7 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
     const currentNote=$('#currentNote'), n=nodes[current];
     currentNote.hidden=!n.comment&&!n.before;
     currentNote.textContent=[n.before,n.comment].filter(Boolean).join(' · ');
+    paintBranchPicker();
     if (scroll) {
       const active=moveList.querySelector('.current');
       if (active) {
@@ -153,6 +142,7 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
   function setPosition(id, scroll=true, dragged=false) {
     if (id==null) return;
     const ch=chapter(), n=ch.nodes[id];
+    branchChoice=null;
     const previous=ch.nodes[ch.current], reverse=previous?.parent===id;
     const edge=scroll && (reverse?previous:n.parent===ch.current?n:null);
     const before=edge?motion.snapshot(board):null;
@@ -160,11 +150,62 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
     ch.current=id; position=new Chess(n.fen); selected=null; legal=[];
     paintBoard(); if(edge)motion.play(board,before,edge,reverse,dragged); paintMoves(scroll);
   }
+  function nearestBranch() {
+    const ch=chapter();
+    for(let id=ch.current;id!=null;id=ch.nodes[id].parent) {
+      if(ch.nodes[id].children.length>1)return id;
+    }
+    return null;
+  }
+  function paintBranchPicker() {
+    const picker=$('#branchPicker'), ch=chapter();
+    if(!branchChoice) {
+      const count=node().children.length;
+      picker.hidden=count<2;
+      picker.innerHTML=count<2?'':'<button class="branch-trigger" data-open-branch>'+icon('branch')+tr('chooseBranch')+' <b>'+count+'</b></button>';
+      return;
+    }
+    const {parent,selected}=branchChoice, p=ch.nodes[parent];
+    picker.hidden=false;
+    const options=p.children.map((id,i)=>{
+      const move=ch.nodes[id], follow=next(id);
+      return '<button role="option" tabindex="-1" id="branchOption'+i+'" data-branch-option="'+id+'" aria-selected="'+(id===selected)+'"><strong>'+
+        esc(prefix(p.fen)+' '+move.san)+'</strong>'+(follow!=null?'<span>'+esc(prefix(move.fen)+' '+ch.nodes[follow].san)+'</span>':'')+'</button>';
+    }).join('');
+    picker.innerHTML='<div class="branch-picker-title">'+icon('branch')+'<b>'+tr('chooseBranch')+'</b><button class="icon-button" data-cancel-branch aria-label="'+tr('close')+'">'+icon('close')+'</button></div>'+
+      '<div role="listbox" tabindex="0" aria-label="'+tr('variation')+'" aria-activedescendant="branchOption'+p.children.indexOf(selected)+'">'+options+'</div><small>'+tr('branchKeys')+'</small>';
+    const list=picker.querySelector('[role=listbox]');
+    list.focus({preventScroll:true});
+    const active=list.querySelector('[aria-selected=true]');
+    if(active.offsetTop<list.scrollTop)list.scrollTop=active.offsetTop;
+    else if(active.offsetTop+active.offsetHeight>list.scrollTop+list.clientHeight)list.scrollTop=active.offsetTop+active.offsetHeight-list.clientHeight;
+  }
+  function chooseBranch(parent,step=0) {
+    if(parent==null)return false;
+    const ch=chapter(),choices=ch.nodes[parent].children;
+    const current=branchChoice?.parent===parent?branchChoice.selected:next(parent);
+    const i=(choices.indexOf(current)+step+choices.length)%choices.length;
+    branchChoice={parent,selected:choices[i]};
+    paintBranchPicker();return true;
+  }
+  function closeBranch() {
+    branchChoice=null;paintBranchPicker();board.focus({preventScroll:true});
+  }
+  $('#branchPicker').onclick=e=>{
+    const option=e.target.closest('[data-branch-option]');
+    if(option){setPosition(Number(option.dataset.branchOption));board.focus({preventScroll:true});}
+    else if(e.target.closest('[data-cancel-branch]'))closeBranch();
+    else if(e.target.closest('[data-open-branch]'))chooseBranch(chapter().current);
+  };
   function navigate(key) {
     const ch=chapter(), current=ch.current;
     if (key==='first') setPosition(0);
     if (key==='previous') setPosition(ch.nodes[current].parent);
-    if (key==='next') setPosition(next(current));
+    if (key==='next') {
+      if(branchChoice){setPosition(branchChoice.selected);board.focus({preventScroll:true});}
+      else if(ch.nodes[current].children.length>1)chooseBranch(current);
+      else setPosition(next(current));
+    }
     if (key==='last') { let id=current; while(next(id)!=null) id=next(id); setPosition(id); }
   }
   function select(square) {
@@ -243,10 +284,6 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
   };
   board.onlostpointercapture=board.onpointercancel=finishGesture;
   board.onclick=e=>{ if(e.detail===0){const sq=e.target.closest('[data-square]');if(sq)tap(sq.dataset.square);} };
-  board.onkeydown=e=>{
-    if(!['Home','End'].includes(e.key))return;
-    e.preventDefault();lastFocus=e.key==='Home'?'a1':'h8';board.querySelector('[data-square="' + lastFocus + '"]').focus();
-  };
   function closeMore() { more.hidden=true; $('#analysisMoreButton').setAttribute('aria-expanded','false'); }
   $('#analysisMoreButton').onclick=()=>{
     more.hidden=!more.hidden; $('#analysisMoreButton').setAttribute('aria-expanded',String(!more.hidden));
@@ -255,8 +292,15 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
   document.addEventListener('pointerdown',e=>{if(!e.target.closest('.menu-anchor'))closeMore();},{signal});
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'&&!more.hidden){closeMore();$('#analysisMoreButton').focus();return;}
-    if(root.querySelector('dialog[open]')||e.target.closest('input,select,textarea,[contenteditable="true"]'))return;
-    const command={ArrowLeft:'previous',ArrowRight:'next',ArrowUp:'last',ArrowDown:'first'}[e.key];
+    if(e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || !more.hidden || root.querySelector('dialog[open]') ||
+      e.target.closest('input,select,textarea,[contenteditable="true"],.lang-menu,.platform-nav,.bar-tools'))return;
+    if(e.key==='ArrowDown' || e.key==='ArrowUp') {
+      const parent=branchChoice?.parent??nearestBranch();
+      if(parent!=null){e.preventDefault();chooseBranch(parent,e.key==='ArrowDown'?1:-1);}
+      return;
+    }
+    if(branchChoice && ['Escape','ArrowLeft'].includes(e.key)){e.preventDefault();closeBranch();return;}
+    const command={ArrowLeft:'previous',ArrowRight:'next',Home:'first',End:'last'}[e.key] || (branchChoice && e.key==='Enter'?'next':null);
     if(command){e.preventDefault();navigate(command);}
   },{signal});
   for(const [id,key] of [['Start','first'],['Prev','previous'],['Next','next'],['End','last']]) $('#analysis'+id).onclick=()=>navigate(key);
