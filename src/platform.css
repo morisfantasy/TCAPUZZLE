@@ -31,7 +31,7 @@
 .tool-title {display:flex;align-items:center;gap:13px;margin:0 0 20px}
 .tool-title h1 {margin:0}.tool-title p{color:var(--sub);font-size:.82rem;font-weight:800}.title-icon,.tile-head span {color:var(--accent);background:var(--accent-tint);border-radius:12px;display:grid;place-items:center}
 .title-icon {width:46px;height:46px}.title-icon .ui-icon{height:25px;width:25px}
-.icon-button,.soft-button,.primary-button,.reset-button,.danger-button,.feature-action,.auth-calculator {font:800 .91rem/1.25 var(--body);cursor:pointer;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.icon-button,.soft-button,.primary-button,.reset-button,.danger-button,.feature-action,.auth-calculator,.auth-openings {font:800 .91rem/1.25 var(--body);cursor:pointer;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
 .icon-button,.soft-button,.reset-button {color:var(--text);background:var(--panel);border:1px solid var(--stroke)}
 .icon-button {height:42px;min-width:42px;padding:8px}
 .soft-button,.reset-button,.danger-button,.primary-button {padding:10px 14px;min-height:42px}
@@ -55,7 +55,7 @@ button:disabled {cursor:default}.icon-button:disabled {opacity:.37}
 .tile-analysis .tile-head span {background:#e4e6ff;color:#434793}
 .section-tile h2 {font-size:1.25rem;margin:0 0 5px}.section-tile p,.video-empty p {font-size:.92rem;color:var(--sub);line-height:1.55}
 .video-empty {min-height:220px;display:grid;place-content:center;justify-items:center;text-align:center;gap:16px;padding:25px}.video-empty .ui-icon {width:40px;height:40px;color:var(--accent)}
-.auth-calculator {margin-top:18px;font-size:.85rem;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.auth-calculator,.auth-openings {margin-top:18px;font-size:.85rem;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
 .mode-tabs {display:flex;width:fit-content;max-width:100%;padding:4px;gap:3px;border-radius:12px;background:var(--tint);margin-bottom:20px}
 .mode-tabs button {background:transparent;color:var(--sub);border:1px solid transparent;border-radius:9px;padding:11px 16px;min-height:44px;display:flex;gap:8px;align-items:center;justify-content:center;font:800 .95rem var(--body);cursor:pointer}
 .mode-tabs button[aria-pressed=true] {background:var(--panel);border-color:var(--stroke);color:var(--accent);box-shadow:0 1px 3px #15153912}

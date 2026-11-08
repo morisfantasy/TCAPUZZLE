@@ -133,7 +133,7 @@ async function suite() {
     await page.unroute('**/api/calendar?month=2090-02');
     for(const path of ['/api/calendar?month=9999-01','/api/calendar/events/abc'])assert.equal((await request(path)).status(),400);
     console.log('PASS public Tools and calendar, combined filters, cross-month date, detail link, back/reload, month navigation, empty/stale/retry, five mobile languages');
-    await login('pupil');assert.equal(await $('.platform-nav a').count(),4);await gate(403);
+    await login('pupil');assert.equal(await $('.platform-nav a').count(),6);await gate(403);
     await nav('tools');assert.equal(await $('[data-tool-card=analysis]').count(),0);
     assert.equal((await request('/api/superadmin/users')).status(),403);
     await nav('library');await click('a[href="#/book/1"]');await click('a[href="#/book/1/ch/0"]');
@@ -147,8 +147,8 @@ async function suite() {
     await page.waitForSelector('[data-user-admin="coach"][data-grant="false"]');await logout();
     await page.goto(base+'/analysis');await $('#u').fill('coach');await $('#p').fill(password);await click('#authForm button');
     await page.waitForSelector('[data-square="e2"]');
-    assert.deepEqual(await $('.platform-nav a').evaluateAll(items=>items.map(a=>a.hash)),['#/home','#/library','#/videos','#/tools']);
-    assert.equal(await $('.platform-nav [aria-current=page]').getAttribute('href'),'#/tools');
+    assert.deepEqual(await $('.platform-nav a').evaluateAll(items=>items.map(a=>a.hash)),['#/home','#/library','#/openings','#/videos','#/calculator','#/analysis','#/tools']);
+    assert.equal(await $('.platform-nav [aria-current=page]').getAttribute('href'),'#/analysis');
     assert.equal((await request('/api/superadmin/users/role',{username:'pupil',isAdmin:true})).status(),403);
     await nav('tools');assert.equal(await $('[data-tool-card]').count(),3);await click('[data-tool-card=analysis]');await page.waitForSelector('.study-square');
     console.log('PASS account roles, owner promotion, book, chapter, workbook, tutorial, progress, videos');
@@ -351,8 +351,10 @@ async function suite() {
     }),'Mobile navigation must reserve its own space');
     await nav('home');await snap('mobile-home');
     await logout();await login('p11');await click('#superadminToggleUsers');await click('[data-user-admin="coach"]');await page.waitForSelector('[data-user-admin="coach"][data-grant="true"]');
-    await logout();await login('coach');await gate(403);assert.equal(await $('.platform-nav a').count(),4);await logout();
+    await logout();await login('coach');await gate(403);assert.equal(await $('.platform-nav a').count(),6);await logout();
     await page.goto(base+'/calculator');await page.waitForSelector('[data-total]');assert.equal(await $('.platform-nav a[href="#/analysis"]').count(),0);
+    await require('./openings-browser.cjs')({page,base,login,logout,request,snap,password,restart:async()=>{await stop();await start();}});
+    await (await import('./openings-store.mjs')).verifyStore(db);
     assert.deepEqual(errors,[]);
     console.log('PASS two rating modes, official example, editing, deletion, reset, all five languages, responsive widths, mobile navigation, touch marking, role revocation and anonymous calculator');
   } finally {

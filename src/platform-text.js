@@ -1,6 +1,8 @@
 // New platform controls follow the workbook's existing language selection.
 const platformLabels = {
   home:'Home|Inicio|Accueil|首页|主頁',
+  openings:'Openings|Aperturas|Ouvertures|开局|開局',
+  openingDesc:'Explore and train TCA opening repertoires.|Explora y entrena los repertorios de TCA.|Découvrez et travaillez les répertoires de TCA.|探索并训练 TCA 开局谱。|探索及訓練 TCA 開局棋譜。',
   booksNav:'Books|Libros|Livres|棋书|棋書',
   videos:'Videos|Vídeos|Vidéos|视频|影片',
   calculator:'Calculator|Calculadora|Calculatrice|计算器|計算機',

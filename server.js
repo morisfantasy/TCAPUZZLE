@@ -10,11 +10,14 @@ const ROOT = path.join(__dirname, 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.json': 'application/json' };
 const SRC = path.join(__dirname, 'src');
 const publicAssets = new Map([
-  ...['norms','norm-ui','norm-text','federations','calendar','calendar-text'].map(name=>['/assets/'+name+'.mjs',[name+'.mjs',TYPES['.js']]]),
+  ...['norms','norm-ui','norm-text','federations','calendar','calendar-text','openings','opening-board','opening-text','opening-admin'].map(name=>['/assets/'+name+'.mjs',[name+'.mjs',TYPES['.js']]]),
   ['/assets/platform.css', ['platform.css', TYPES['.css']]],
   ['/assets/calculator.mjs', ['calculator.mjs', TYPES['.js']]],
   ['/assets/rating.mjs', ['rating.mjs', TYPES['.js']]]
 ]);
+publicAssets.set('/assets/opening-chess.mjs',[path.relative(SRC,path.resolve(path.dirname(require.resolve('chess.js')),'../esm/chess.js')),TYPES['.js']]);
+publicAssets.set('/assets/opening-arrows.mjs',['study-arrows.mjs',TYPES['.js']]);
+publicAssets.set('/assets/openings.css',['openings.css',TYPES['.css']]);
 const coachAssets = new Map([
   ['/api/analysis/study-arrows.mjs', path.join(SRC, 'study-arrows.mjs')],
   ['/api/analysis/board.mjs', path.join(SRC, 'analysis_board.mjs')],
@@ -26,6 +29,7 @@ if (!DATABASE_URL) throw new Error('DATABASE_URL is required');
 
 const pool = new Pool({ connectionString: DATABASE_URL });
 const SESSION_DAYS = 30;
+const openings=import('./src/opening-api.mjs').then(({createOpenings})=>createOpenings({pool,currentUser,readJson,json}));
 const calendar=createCalendar({
   async readCache(key) {
     const result=await pool.query('SELECT payload, updated_at FROM fide_calendar_cache WHERE cache_key=$1',[key]);
@@ -262,6 +266,7 @@ const server = http.createServer(async (req, res) => {
     catch { return json(res, 500, { error: 'Asset could not be loaded.' }); }
   }
   if (pathname === '/analysis' || pathname === '/analysis/') return handleApi(req, res, '/analysis');
+  if(pathname==='/api/openings'||pathname.startsWith('/api/openings/'))return (await openings).handle(req,res,url);
   if(pathname==='/api/calendar' || pathname.startsWith('/api/calendar/events/')) {
     if(req.method!=='GET')return json(res,405,{error:'Method not allowed'});
     try {
@@ -276,11 +281,12 @@ const server = http.createServer(async (req, res) => {
 
   // The public client only has one entry point. Coach modules are served above.
   if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'Method not allowed' });
-  if (!['/', '/index.html', '/calculator', '/calculator/', '/tools','/tools/'].includes(pathname) && !/^\/calendar(?:\/[1-9]\d{0,8})?\/?$/.test(pathname)) return json(res, 404, { error: 'Not found' });
+  if (!['/', '/index.html', '/calculator', '/calculator/', '/tools','/tools/'].includes(pathname) && !/^\/openings(?:\/[a-z0-9-]+){0,3}\/?$/.test(pathname) && !/^\/calendar(?:\/[1-9]\d{0,8})?\/?$/.test(pathname)) return json(res, 404, { error: 'Not found' });
   try { await sendFile(res, path.join(ROOT, 'index.html'), TYPES['.html'], 'no-cache'); }
   catch { json(res, 500, { error: 'Application could not be loaded.' }); }
 });
 
 initDb()
+  .then(async()=>{await (await openings).init();})
   .then(() => server.listen(PORT, '0.0.0.0', () => console.log('TCA Tactics Trainer on port ' + PORT)))
   .catch(err => { console.error('Database initialization failed', err); process.exit(1); });

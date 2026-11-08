@@ -4,6 +4,7 @@ const icons = {
   videos:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 8 6 4-6 4z"/>',
   calculator:'<rect x="5" y="2" width="14" height="20" rx="3"/><path d="M8 7h8M8.5 12h1m5 0h1m-7 5h1m5 0h1"/>',
   analysis:'<path d="m6 15 1-4 3-3-1-4 4 2 3-1 2 4 1 7H8l-2 3h14M5 21h15M13 9h.1"/>',
+  openings:'<path d="M12 20v-5m0 0L5 9V6m7 9 7-6V6"/><rect x="3" y="2" width="4" height="4" rx="1"/><rect x="17" y="2" width="4" height="4" rx="1"/><circle cx="12" cy="20" r="2"/>',
   toolsNav:'<path d="M4 8h16v12H4zM8 8V5h8v3M4 12c4 3 12 3 16 0M10 13h4"/>',
   calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 10h18M7 14h2m3 0h2m-7 3h2"/>',
   search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',
@@ -25,15 +26,25 @@ const icons = {
 function icon(name) { return '<svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + icons[name] + '</svg>'; }
 
 function sections() {
-  return [['home','home','home'],['library','booksNav','books'],['videos','videos','videos'],['tools','toolsNav','toolsNav']];
+  const items=[['home','home','home'],['library','booksNav','books'],['openings','openings','openings'],['videos','videos','videos'],['calculator','calculator','calculator']];
+  if(Auth.current()?.isAdmin)items.push(['analysis','analysis','analysis']);
+  return [...items,['tools','toolsNav','toolsNav']];
 }
 function routeName() {
   return location.hash.split('?')[0].replace(/^#\/?/,'').split('/')[0] || 'home';
 }
+function navCurrent(){
+  const route=routeName();
+  if(matchMedia('(max-width:850px)').matches&&['analysis','calculator'].includes(route))return 'tools';
+  return ({book:'library',play:'library',books:'library',courses:'videos',calendar:'tools'})[route]||route;
+}
+matchMedia('(max-width:850px)').addEventListener('change',()=>{
+  for(const a of document.querySelectorAll('.platform-nav a')){if(a.hash==='#/'+navCurrent())a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');}
+});
 function shell(inner) {
   const user=Auth.current();
-  const current = ({book:'library',play:'library',books:'library',courses:'videos',calculator:'tools',analysis:'tools',calendar:'tools'})[routeName()] || routeName();
-  const nav=sections().map(([path,key,glyph])=>'<a href="#/' + path + '"' + (path===current?' aria-current="page"':'') + '>' + icon(glyph) + '<span>' + tr(key) + '</span></a>').join('');
+  const current=navCurrent();
+  const nav=sections().map(([path,key,glyph])=>'<a href="#/' + path + '"' + (['calculator','analysis'].includes(path)?' class="op-desktop"':'') + (path===current?' aria-current="page"':'') + '>' + icon(glyph) + '<span>' + tr(key) + '</span></a>').join('');
   return '<div class="platform-shell"><aside class="platform-rail"><a class="platform-brand" href="#/home" aria-label="The Chess Academy"><img src="' + LOGO + '" alt="The Chess Academy"></a>' +
     '<nav class="platform-nav" aria-label="TCA">' + nav + '</nav></aside><div class="platform-body">' +
     '<header class="platform-bar"><a class="mobile-brand" href="#/home"><img src="' + LOGO + '" alt="The Chess Academy"></a><div class="bar-tools">' + langSelect() +
@@ -41,7 +52,14 @@ function shell(inner) {
       '<a class="soft-button" href="#/login">' + esc(t('login')) + '</a>') + '</div></header>' +
     '<main class="platform-main" id="platformMain">' + inner + '</main></div></div>';
 }
-let studyModule, ratingModule, unmountStudy, unmountCalendar, renderVersion=0;
+let studyModule, ratingModule, unmountStudy, unmountCalendar, unmountOpenings, renderVersion=0;
+async function renderOpenings(parts){
+  const version=renderVersion;
+  root.innerHTML=shell('<div id="openingRoot" role="region" aria-label="'+tr('openings')+'">'+tr('busy')+'</div>');bindShell();
+  const area=$('#openingRoot');
+  try{const {mountOpenings}=await import('/assets/openings.mjs');if(version===renderVersion)unmountOpenings=mountOpenings(area,{parts,locale:document.documentElement.lang,user:Auth.current(),esc,icon,pieceSVG,motion:BoardMotion});}
+  catch{if(version===renderVersion)area.textContent=tr('unavailable');}
+}
 function bindShell() {
   bindLang();
   const logout=$('#logout');
@@ -51,8 +69,8 @@ function bindShell() {
 }
 function renderHome() {
   const stats=stat(ALL), upcoming=ALL.find(ex=>rec(keyOf(ex.id))?.s!=='c') || ALL[0];
-  const tools=sections().slice(1);
-  const desc={library:bookDescription(),videos:tr('videosEmpty'),tools:tr(Auth.current()?.isAdmin?'toolsCoachDesc':'toolsPublicDesc')};
+  const tools=sections().slice(1).filter(([path])=>!['analysis','calculator'].includes(path));
+  const desc={library:bookDescription(),openings:tr('openingDesc'),videos:tr('videosEmpty'),tools:tr(Auth.current()?.isAdmin?'toolsCoachDesc':'toolsPublicDesc')};
   root.innerHTML=shell('<section class="home-heading"><h1>' + tr('workspace') + '</h1></section>' +
     '<section class="training-feature"><div><p>' + tr('workbook') + '</p><h2>White Pawn</h2><span>' + tr('solvedCount',stats.c) + '</span><a class="feature-action" href="#/play/' + upcoming.id + '">' + tr('continueBook') + icon('arrow') + '</a></div>' +
     '<img src="' + BOOK_COVER + '" alt="White Pawn"></section><div class="section-grid">' +
