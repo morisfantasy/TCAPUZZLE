@@ -1,4 +1,5 @@
 const assert=require('node:assert/strict');
+const dragPiece=require('./piece-drag.cjs');
 module.exports=async function({page,base,login,logout,request,snap,password,restart}){
   const loc=s=>page.locator(s),click=s=>loc(s).click();
   const go=async p=>{await page.goto(base+p);};
@@ -34,11 +35,28 @@ module.exports=async function({page,base,login,logout,request,snap,password,rest
   await go('/openings/club-test/train');await loc('#opLimit').fill('2');await loc('#opFresh').fill('2');await click('[data-op=start]');
   await loc('.study-board[data-playing]').waitFor();const sessionURL=page.url();
   async function play(from,to){await loc('.study-board[data-playing]').waitFor();await click('[data-square="'+from+'"]');await click('[data-square="'+to+'"]');}
-  await play('e7','e4');assert.match(await loc('#opFeedback').innerText(),/illegal/);
-  await play('a7','a6');await loc('.op-miss').waitFor();assert.match(await loc('#opFeedback').innerText(),/c5/);
+  await dragPiece(page,'e7','e4');assert.match(await loc('#opFeedback').innerText(),/illegal/);
+  assert.equal(await loc('[data-square=e7]').getAttribute('data-piece'),'p');
+  await dragPiece(page,'a7','a6');await loc('.op-miss').waitFor();assert.match(await loc('#opFeedback').innerText(),/c5/);
+  assert.equal(await loc('[data-square=a7]').getAttribute('data-piece'),'p');
+  assert.equal(await loc('[data-square=c5]').getAttribute('data-piece'),'p');
   await click('[data-op=continue]');await click('.op-side a[href="#/openings/club-test"]');
   await page.getByRole('link',{name:'Resume session'}).click();await loc('.study-board[data-playing]').waitFor();
-  assert.equal(page.url(),sessionURL);await play('d7','d6');await loc('.op-correct').waitFor();await click('[data-op=continue]');
+  assert.equal(page.url(),sessionURL);
+  const answerURL='**/api/openings/club-test/sessions/*/answer';
+  let releaseAnswer,landing,submissions=0;
+  const gate=new Promise(resolve=>{releaseAnswer=resolve;});
+  await page.route(answerURL,async route=>{submissions++;await gate;await route.continue();});
+  try{
+    await dragPiece(page,'d7','d6');
+    assert.equal(await loc('[data-square=d7]').getAttribute('data-piece'),'');
+    landing=await loc('[data-square=d6] .study-piece').elementHandle();
+    assert.equal(await landing.getAttribute('class'),'study-piece');
+    assert.equal(await loc('.op-correct').count(),0);
+  }finally{releaseAnswer();}
+  await loc('.op-correct').waitFor();await page.unroute(answerURL);
+  assert.equal(submissions,1);assert.ok(await landing.evaluate(el=>el.isConnected));
+  await click('[data-op=continue]');
   await play('e7','e5');await loc('.op-correct').waitFor();await click('[data-op=continue]');await page.getByRole('heading',{name:'Session results'}).waitFor();
   assert.match(await loc('.op-metrics').innerText(),/Mistakes\s*1/);await go('/openings/club-test');await loc('.op-dashboard').waitFor();await page.reload();await loc('.op-dashboard').waitFor();
   const pg=(await (await request('/api/openings/club-test')).json()).progress;await restart();
@@ -58,6 +76,11 @@ module.exports=async function({page,base,login,logout,request,snap,password,rest
   await go('/openings/club-test');await loc('.op-copy').waitFor();assert.equal(await loc('.op-dashboard').count(),0);
   await logout();await login('p11');await go('/openings/admin/club-test');await loc('#oa-side').selectOption('w');await click('[data-op=validate]');await loc('#oa-line option').first().waitFor({state:'attached'});await click('[data-op=save]');await page.waitForFunction(()=>document.querySelector('#oa-message')?.textContent.includes('2'));
   await go('/openings/club-test/train');await loc('#opLimit').fill('1');await loc('#opFresh').fill('1');await click('[data-op=start]');await loc('.study-board[data-playing]').waitFor();
-  assert.equal(await loc('.study-square').first().getAttribute('data-square'),'a8');await play('e2','e4');await loc('.op-correct').waitFor();await click('[data-op=continue]');await page.getByRole('heading',{name:'Session results'}).waitFor();
+  assert.equal(await loc('.study-square').first().getAttribute('data-square'),'a8');
+  const touch=await page.context().newCDPSession(page);
+  await touch.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
+  await dragPiece(page,'e2','e4',{touch,cancel:true});
+  await dragPiece(page,'e2','e4',{touch});await touch.detach();
+  await loc('.op-correct').waitFor();await click('[data-op=continue]');await page.getByRole('heading',{name:'Session results'}).waitFor();
   await logout();console.log('PASS real PGN preview if supplied, administrator import/validation/publication and access, legal/illegal/alternative moves, failed position returning, mobile study in five languages, pause/resume and revocation');
 };

@@ -141,6 +141,7 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
   }
   function setPosition(id, scroll=true, dragged=false) {
     if (id==null) return;
+    finishGesture();
     const ch=chapter(), n=ch.nodes[id];
     branchChoice=null;
     const previous=ch.nodes[ch.current], reverse=previous?.parent===id;
@@ -218,7 +219,7 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
     const choices=position.moves({square:from,verbose:true}).filter(m=>m.to===to);
     if (!choices.length) return false;
     if (choices.some(m=>m.promotion) && !promoteTo) {
-      promotion={from,to,dragged};
+      promotion={from,to,dragged,restore:dragged?motion.parkPromotion(board,from,to):null};
       $('.promo-choices').innerHTML=['q','r','b','n'].map(v=>'<button class="icon-button" data-promotion="' + v + '" aria-label="' + tr('pieces').split(',')['pnbrqk'.indexOf(v)] + '">' +
         pieceSVG(position.turn()==='w'?v.toUpperCase():v) + '</button>').join('');
       $('#promoDialog').showModal(); return true;
@@ -245,44 +246,42 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
   }
   function finishGesture() {
     if(!gesture)return;
-    gesture.ghost?.remove(); board.querySelector('.drag-origin')?.classList.remove('drag-origin');
-    const id=gesture.id; gesture=null;
+    const {id,draw,drag}=gesture; gesture=null;
+    drag?.remove();
     if(board.hasPointerCapture(id))board.releasePointerCapture(id);
-    paintMarks();
+    if(draw)paintMarks();
   }
   board.oncontextmenu=e=>e.preventDefault();
   board.onpointerdown=e=>{
     const sq=e.target.closest('[data-square]');
     if (!sq || gesture || ![0,2].includes(e.button))return;
     e.preventDefault(); lastFocus=sq.dataset.square;
-    gesture={id:e.pointerId,from:sq.dataset.square,x:e.clientX,y:e.clientY,time:e.timeStamp,clear:e.altKey,draw:e.button===2||drawing,color:e.shiftKey?'R':'G'};
+    const from=sq.dataset.square, draw=e.button===2||drawing;
+    const drag=!draw && position.get(from)?.color===position.turn()?motion.pieceDrag(board,sq,e,()=>{
+      selected=from; legal=position.moves({square:from,verbose:true}); return legal;
+    }):null;
+    gesture={id:e.pointerId,from,time:e.timeStamp,clear:e.altKey,draw,drag,color:e.shiftKey?'R':'G'};
     board.setPointerCapture(e.pointerId);
   };
   board.onpointermove=e=>{
     if (!gesture||e.pointerId!==gesture.id)return;
-    const to=squareAt(e);
-    if (gesture.draw) { gesture.to=to; paintMarks(); return; }
-    const {from}=gesture;
-    if(!gesture.ghost && Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>5 && position.get(from)?.color===position.turn()) {
-      selected=from; legal=position.moves({square:from,verbose:true}); paintBoard();
-      const origin=board.querySelector('[data-square="' + from + '"]');
-      gesture.ghost=origin.querySelector('.study-piece').cloneNode(true);
-      gesture.ghost.className='drag-piece'; gesture.ghost.style.width=origin.clientWidth + 'px';
-      origin.classList.add('drag-origin'); root.append(gesture.ghost);
-    }
-    if(gesture.ghost) { gesture.ghost.style.left=e.clientX+'px'; gesture.ghost.style.top=e.clientY+'px'; }
+    if (gesture.draw) { gesture.to=squareAt(e); paintMarks(); }
+    else gesture.drag?.move(e);
   };
   board.onpointerup=e=>{
     if (!gesture||gesture.id!==e.pointerId)return;
-    const {from,draw,color,ghost,clear,time}=gesture, to=squareAt(e);
+    const {from,draw,color,drag,clear,time}=gesture, to=squareAt(e);
+    const dragged=!!drag?.active;
     finishGesture(); if(!to)return;
     if(draw && from===to && (clear || (e.pointerType!=='mouse' && e.timeStamp-time>=550))){node().marks=[];paintMarks();}
     else if(draw && from===to)eraseOrCircle(to,e,color);
     else if(draw)toggleMark(from,to,color);
-    else if(ghost||from!==to){ if(from!==to)play(from,to,undefined,!!ghost); }
+    else if(dragged||from!==to){ if(from!==to)play(from,to,undefined,dragged); }
     else tap(to);
   };
-  board.onlostpointercapture=board.onpointercancel=finishGesture;
+  board.onpointercancel=e=>{if(gesture?.id===e.pointerId)finishGesture();};
+  board.onlostpointercapture=e=>{if(e.target===board && gesture?.id===e.pointerId)finishGesture();};
+  window.addEventListener('blur',finishGesture,{signal});
   board.onclick=e=>{ if(e.detail===0){const sq=e.target.closest('[data-square]');if(sq)tap(sq.dataset.square);} };
   function closeMore() { more.hidden=true; $('#analysisMoreButton').setAttribute('aria-expanded','false'); }
   $('#analysisMoreButton').onclick=()=>{
@@ -291,6 +290,7 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
   };
   document.addEventListener('pointerdown',e=>{if(!e.target.closest('.menu-anchor'))closeMore();},{signal});
   document.addEventListener('keydown',e=>{
+    if(gesture){if(e.key==='Escape')finishGesture();return;}
     if(e.key==='Escape'&&!more.hidden){closeMore();$('#analysisMoreButton').focus();return;}
     if(e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || !more.hidden || root.querySelector('dialog[open]') ||
       e.target.closest('input,select,textarea,[contenteditable="true"],.lang-menu,.platform-nav,.bar-tools'))return;
@@ -304,9 +304,9 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
     if(command){e.preventDefault();navigate(command);}
   },{signal});
   for(const [id,key] of [['Start','first'],['Prev','previous'],['Next','next'],['End','last']]) $('#analysis'+id).onclick=()=>navigate(key);
-  $('#analysisFlip').onclick=()=>{flipped=!flipped;paintBoard();};
+  $('#analysisFlip').onclick=()=>{finishGesture();flipped=!flipped;paintBoard();};
   $('#drawToggle').onclick=()=>{
-    drawing=!drawing; $('#drawToggle').setAttribute('aria-pressed',String(drawing));
+    finishGesture(); drawing=!drawing; $('#drawToggle').setAttribute('aria-pressed',String(drawing));
     $('#drawHint').textContent=tr(drawing?'drawTouch':'drawHint'); $('#drawHint').classList.toggle('touch-active',drawing);
   };
   $('#drawHint').textContent=tr('drawHint');
@@ -331,9 +331,12 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
     $('#moveDialog').close(); setPosition(cursor===targetMove?n.parent:ch.current);
   };
   $('.promo-choices').onclick=e=>{
-    const b=e.target.closest('[data-promotion]'); if(!b)return;
-    $('#promoDialog').close(); play(promotion.from,promotion.to,b.dataset.promotion,promotion.dragged);
+    const b=e.target.closest('[data-promotion]'); if(!b||!promotion)return;
+    const {from,to,dragged}=promotion;
+    clearPromotion(); $('#promoDialog').close(); play(from,to,b.dataset.promotion,dragged);
   };
+  function clearPromotion(){promotion?.restore?.();promotion=null;}
+  $('#promoDialog').addEventListener('close',()=>{if(!$('#promoDialog').open)clearPromotion();});
   for(const [button,dialog] of [['#closeImport','#analysisImportModal'],['#closeMove','#moveDialog'],['#closePromo','#promoDialog'],['#closeFen','#fenDialog']]) $(button).onclick=()=>$(dialog).close();
   for(const d of root.querySelectorAll('dialog'))d.addEventListener('click',e=>{ if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close(); });
   more.onclick=async e=>{
@@ -383,5 +386,5 @@ export function mountAnalysis(root, { tr, esc, icon, pieceSVG, motion, user, den
     });
   };
   setupChapter();
-  return ()=>{listeners.abort(); motion.cancel(board); ++importRevision; gesture?.ghost?.remove();};
+  return ()=>{listeners.abort(); finishGesture(); clearPromotion(); motion.cancel(board); ++importRevision;};
 }

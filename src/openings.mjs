@@ -133,13 +133,17 @@ export function mountOpenings(root,{parts,locale,user,esc,icon,pieceSVG,motion})
       const enable=()=>{if(disposed||!root.isConnected)return;board.set(q.fen,{move:q.incoming,interactive:true});locked=false;};
       clearTimeout(timer);if(q.incoming){board.set(q.incoming.fen);timer=setTimeout(enable,260);}else enable();
     }
-    async function answer(move){
+    async function answer(move,dropFen){
       if(locked)return;locked=true;board.disable();const before=s;
       try{
         const updated=await api('/'+slug+'/sessions/'+id+'/answer',{step:s.step,move});if(disposed)return;s=updated;
         const f=s.feedback;if(!f){drawPrompt();return;}
         if(['context','illegal'].includes(f.kind)){board.set(s.prompt.fen,{interactive:true});$('#opFeedback').textContent=t(f.kind);locked=false;return;}
-        board.set(f.after,{move:f});$('#opFeedback').className=f.kind==='correct'?'op-correct':'op-miss';
+        if(f.after!==dropFen){
+          if(dropFen)board.set(before.prompt.fen);
+          board.set(f.after,{move:f});
+        }
+        $('#opFeedback').className=f.kind==='correct'?'op-correct':'op-miss';
         $('#opFeedback').textContent=f.kind==='correct'?t('correct')+' · '+f.answer:t('miss',f.alternatives.join(' / '));
         $('[data-op=continue]').hidden=false;
         if(f.kind==='correct'){clearTimeout(timer);timer=setTimeout(()=>{if(!disposed)drawPrompt();},850);}

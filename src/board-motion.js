@@ -16,6 +16,52 @@ const BoardMotion = (() => {
     active.delete(board);
     board.querySelectorAll('.motion-ghost').forEach(el=>el.remove());
   }
+  function pieceDrag(board, cell, down, selectOrigin) {
+    const startX=down.clientX, startY=down.clientY;
+    let ghost, left, top;
+    return {
+      get active() { return !!ghost; },
+      move(event) {
+        const dx=event.clientX-startX, dy=event.clientY-startY;
+        if (!ghost) {
+          if (Math.hypot(dx,dy)<4) return;
+          cancel(board);
+          const piece=cell.querySelector('.study-piece');
+          if (!piece) return;
+          const rect=piece.getBoundingClientRect();
+          left=rect.left; top=rect.top;
+          ghost=piece.cloneNode(true);
+          ghost.className='drag-piece';
+          ghost.setAttribute('aria-hidden','true');
+          ghost.style.width=rect.width+'px';
+          ghost.style.height=rect.height+'px';
+          document.body.append(ghost);
+          board.querySelectorAll('.selected,.legal,.capture').forEach(sq=>sq.classList.remove('selected','legal','capture'));
+          cell.classList.add('drag-origin','selected');
+          board.classList.add('piece-dragging');
+          for (const move of selectOrigin()) {
+            const target=cellAt(board,move.to);
+            target.classList.add(target.dataset.piece?'capture':'legal');
+          }
+        }
+        ghost.style.transform='translate3d('+(left+dx)+'px,'+(top+dy)+'px,0)';
+      },
+      remove() {
+        if (!ghost) return;
+        ghost.remove(); ghost=null;
+        cell.classList.remove('drag-origin');
+        board.classList.remove('piece-dragging');
+      }
+    };
+  }
+  // Keep the dropped pawn on the last rank while its promotion is being chosen.
+  function parkPromotion(board, from, to) {
+    const source=cellAt(board,from), target=cellAt(board,to);
+    const pawn=source.querySelector('.study-piece'), capture=target.querySelector('.study-piece');
+    if (capture) capture.style.visibility='hidden';
+    target.append(pawn);
+    return ()=>{source.prepend(pawn);if(capture)capture.style.visibility='';};
+  }
   function play(board, before, move, reverse=false, dragged=false) {
     if (!before || !move || !Element.prototype.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const animations = [], duration = 150, after = snapshot(board);
@@ -63,5 +109,5 @@ const BoardMotion = (() => {
       }
     }
   }
-  return {snapshot,cancel,play};
+  return {snapshot,cancel,play,pieceDrag,parkPromotion};
 })();

@@ -13,6 +13,7 @@ const os = require('node:os');
 const { setTimeout: delay } = require('node:timers/promises');
 const { chromium } = require('playwright');
 const { Pool } = require('pg');
+const dragPiece = require('./piece-drag.cjs');
 
 async function suite() {
   const url = new URL(process.env.TCA_TEST_DATABASE_URL);
@@ -147,8 +148,8 @@ async function suite() {
     await page.waitForSelector('[data-user-admin="coach"][data-grant="false"]');await logout();
     await page.goto(base+'/analysis');await $('#u').fill('coach');await $('#p').fill(password);await click('#authForm button');
     await page.waitForSelector('[data-square="e2"]');
-    assert.deepEqual(await $('.platform-nav a').evaluateAll(items=>items.map(a=>a.hash)),['#/home','#/library','#/openings','#/videos','#/calculator','#/analysis','#/tools']);
-    assert.equal(await $('.platform-nav [aria-current=page]').getAttribute('href'),'#/analysis');
+    assert.deepEqual(await $('.platform-nav a').evaluateAll(items=>items.map(a=>a.hash)),['#/home','#/library','#/openings','#/videos','#/calculator','#/tools']);
+    assert.equal(await $('.platform-nav [aria-current=page]').getAttribute('href'),'#/tools');
     assert.equal((await request('/api/superadmin/users/role',{username:'pupil',isAdmin:true})).status(),403);
     await nav('tools');assert.equal(await $('[data-tool-card]').count(),3);await click('[data-tool-card=analysis]');await page.waitForSelector('.study-square');
     console.log('PASS account roles, owner promotion, book, chapter, workbook, tutorial, progress, videos');
@@ -224,7 +225,8 @@ async function suite() {
     assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),await $('#analysisBoard').getAttribute('data-fen'));
     await click('#analysisMoreButton');const downloaded=page.waitForEvent('download');await click('[data-tool="download"]');
     const dl=await downloaded;const exported=await fs.readFile(await dl.path(),'utf8');assert.match(exported,/\(1\. d4 d5 \(1\.\.\. Nf6\)\)/);
-    await drag('c7','c5');assert.equal(await piece('c5'),'p');
+    await dragPiece(page,'c7','c5',{cancel:true});
+    await dragPiece(page,'c7','c5');assert.equal(await piece('c5'),'p');
     await click('#analysisFlip');
     const fen='8/8/8/8/8/8/4K3/7k b - - 0 17';
     const multi=branch+'\n\n[ChapterName "Endgame"]\n[SetUp "1"]\n[FEN "'+fen+'"]\n\n17... Kg1 *';
@@ -237,7 +239,9 @@ async function suite() {
     assert.equal(await piece('d8'),'R');
     await ingest('this is not a game','bad.pgn',false);await page.keyboard.press('Escape');assert.equal(await piece('d8'),'R');
     await ingest('1. e4 a6 2. e5 d5 *');await end();await sq('e5').click();await sq('d6').click();assert.equal(await piece('d6'),'P');assert.equal(await piece('d5'),'');
-    await ingest('[FEN "7k/P7/8/8/8/8/8/4K3 w - - 0 1"]\n\n*');await sq('a7').click();await sq('a8').click();
+    await ingest('[FEN "7k/P7/8/8/8/8/8/4K3 w - - 0 1"]\n\n*');await dragPiece(page,'a7','a8');
+    assert.ok(await sq('a8').locator('.study-piece').isVisible());await page.keyboard.press('Escape');
+    await sq('a7').locator('.study-piece').waitFor();await dragPiece(page,'a7','a8');
     await click('[data-promotion="n"]');assert.equal(await piece('a8'),'N');
     console.log('PASS PGN file/paste, complete game, annotations/NAGs, nested branches, deletion, chapters, FEN, line endings, invalid/atomic import, keyboard, flip, drag, copy and export, castling, en passant, underpromotion');
 
@@ -341,7 +345,8 @@ async function suite() {
     await touchMove('d4','f5');assert.equal(await $('.board-marks [data-arrow=knight]').count(),1);
     const [holdX,holdY]=await geometry('h3');await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:holdX,y:holdY}]});await delay(620);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
     assert.equal(await $('.board-marks circle,.board-marks [data-arrow]').count(),0);
-    await click('#drawToggle');await touchMove('g1','f3');assert.equal(await piece('f3'),'N');
+    await click('#drawToggle');await dragPiece(page,'g1','f3',{touch:cdp,cancel:true});
+    await dragPiece(page,'g1','f3',{touch:cdp});assert.equal(await piece('f3'),'N');
     await cdp.detach();
     await click('#analysisMoreButton');assert.ok(await $('[data-tool=download]').isVisible());await page.keyboard.press('Escape');await snap('mobile-analysis');
     assert.ok(await page.evaluate(()=>{

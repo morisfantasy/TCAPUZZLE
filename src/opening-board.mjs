@@ -3,7 +3,7 @@ import {arrowRoute,arrowOutline} from './opening-arrows.mjs';
 
 export function openingBoard(el,{side,pieceSVG,motion,t,onMove,onIllegal}){
   const board=el.querySelector('.study-board'),promo=el.querySelector('.op-promotion');
-  let chess,selected=null,marked=[],lastMove=null,press=null,choices=[],canMove=false;
+  let chess,selected=null,marked=[],lastMove=null,press=null,promotion=null,canMove=false;
   const coord=sq=>{const file=sq.charCodeAt(0)-97,rank=+sq[1];return side==='b'?[7.5-file,rank-.5]:[file+.5,8.5-rank];};
   function marks(){
     const colors={G:'#147b50',R:'#b73435',B:'#274bb7',Y:'#a86a00'};
@@ -25,32 +25,77 @@ export function openingBoard(el,{side,pieceSVG,motion,t,onMove,onIllegal}){
     }
     board.dataset.fen=chess.fen();board.innerHTML=cells.join('')+'<svg class="board-marks" viewBox="0 0 8 8" aria-hidden="true">'+marks()+'</svg>';
   }
-  function set(fen,{move=null,marks=[],reverse=false,interactive=false}={}){
-    const before=chess&&motion.snapshot(board);chess=new Chess(fen);selected=null;canMove=interactive;marked=marks;lastMove=move;choices=[];promo.hidden=true;
-    board.toggleAttribute('data-playing',interactive);paint();if(move&&before)motion.play(board,before,move,reverse);
+  function endPress(){
+    if(!press)return;
+    const {id,drag}=press;press=null;
+    drag?.remove();
+    if(board.hasPointerCapture(id))board.releasePointerCapture(id);
   }
-  function submit(from,to){
+  function closePromotion(){
+    promotion?.restore?.();promotion=null;promo.hidden=true;
+  }
+  function set(fen,{move=null,marks=[],reverse=false,interactive=false,dragged=false}={}){
+    endPress();closePromotion();
+    const before=move&&chess&&motion.snapshot(board);
+    chess=new Chess(fen);selected=null;canMove=interactive;marked=marks;lastMove=move;
+    board.toggleAttribute('data-playing',interactive);paint();if(before)motion.play(board,before,move,reverse,dragged);
+  }
+  function commit(move,dragged){
+    if(dragged)set(move.after,{move,dragged:true});
+    onMove(move.from+move.to+(move.promotion||''),dragged?move.after:null);
+  }
+  function submit(from,to,dragged=false){
     const moves=chess.moves({square:from,verbose:true}).filter(m=>m.to===to);
     if(!moves.length){onIllegal?.();return;}
-    if(moves.length>1){choices=moves;promo.innerHTML='<span>'+t('promote')+'</span>'+moves.map(m=>'<button type="button" class="soft-button" data-promo="'+m.promotion+'">'+pieceSVG(side==='w'?m.promotion.toUpperCase():m.promotion)+'</button>').join('');promo.hidden=false;return;}
-    onMove(from+to+(moves[0].promotion||''));
+    if(moves.length>1){
+      promotion={moves,dragged,restore:dragged?motion.parkPromotion(board,from,to):null};
+      promo.innerHTML='<span>'+t('promote')+'</span>'+moves.map(m=>'<button type="button" class="soft-button" data-promo="'+m.promotion+'">'+pieceSVG(side==='w'?m.promotion.toUpperCase():m.promotion)+'</button>').join('');
+      promo.hidden=false;return;
+    }
+    commit(moves[0],dragged);
   }
   function select(s){
-    if(!canMove||!s)return;
+    if(!canMove||promotion||!s)return;
     const man=chess.get(s);
     if(s===selected){selected=null;paint();return;}
     if(man?.color===chess.turn()){selected=s;paint();return;}
     if(selected)submit(selected,s);
   }
-  board.onpointerdown=e=>{if(!canMove||e.button!==0)return;const cell=e.target.closest('[data-square]');if(cell){press={s:cell.dataset.square,x:e.clientX,y:e.clientY};board.setPointerCapture(e.pointerId);}};
-  board.onpointerup=e=>{
-    if(!press)return;const from=press.s,target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-square]'),to=target?.dataset.square;
-    const dragged=Math.hypot(e.clientX-press.x,e.clientY-press.y)>8;press=null;
-    if(!target||!board.contains(target))return;
-    if(dragged&&from!==to&&chess.get(from)?.color===chess.turn())submit(from,to);else select(to);
+  board.onpointerdown=e=>{
+    if(!canMove||press||promotion||e.button!==0)return;
+    const cell=e.target.closest('[data-square]');if(!cell)return;
+    e.preventDefault();
+    const from=cell.dataset.square;
+    const drag=chess.get(from)?.color===chess.turn()?motion.pieceDrag(board,cell,e,()=>{
+      selected=from;return chess.moves({square:from,verbose:true});
+    }):null;
+    press={id:e.pointerId,from,drag};board.setPointerCapture(e.pointerId);
   };
-  board.onpointercancel=()=>{press=null;};
-  board.onclick=e=>{if(!e.detail)select(e.target.closest('[data-square]')?.dataset.square);};
-  promo.onclick=e=>{const p=e.target.closest('[data-promo]')?.dataset.promo,m=choices.find(v=>v.promotion===p);if(m){promo.hidden=true;onMove(m.from+m.to+p);}};
-  return {set,disable(){canMove=false;selected=null;promo.hidden=true;},clear(){motion.cancel(board);}};
+  board.onpointermove=e=>{if(press?.id===e.pointerId)press.drag?.move(e);};
+  board.onpointerup=e=>{
+    if(press?.id!==e.pointerId)return;
+    const {from,drag}=press,target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-square]'),dragged=!!drag?.active;
+    endPress();
+    if(!target||!board.contains(target))return;
+    const to=target.dataset.square;
+    if(dragged){if(from!==to)submit(from,to,true);}
+    else if(from===to)select(to);
+  };
+  board.onpointercancel=e=>{if(press?.id===e.pointerId)endPress();};
+  board.onlostpointercapture=e=>{if(e.target===board && press?.id===e.pointerId)endPress();};
+  const listeners=new AbortController();
+  window.addEventListener('blur',endPress,{signal:listeners.signal});
+  window.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){endPress();closePromotion();}
+  },{signal:listeners.signal});
+  board.onclick=e=>{if(e.detail===0)select(e.target.closest('[data-square]')?.dataset.square);};
+  promo.onclick=e=>{
+    const p=e.target.closest('[data-promo]')?.dataset.promo,move=promotion?.moves.find(m=>m.promotion===p);
+    if(move){const {dragged}=promotion;closePromotion();commit(move,dragged);}
+  };
+  return {
+    set,
+    disable(){endPress();closePromotion();canMove=false;selected=null;board.removeAttribute('data-playing');},
+    clear(){listeners.abort();endPress();closePromotion();motion.cancel(board);}
+  };
 }
